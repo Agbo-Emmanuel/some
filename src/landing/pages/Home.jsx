@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ArrowRight, Play, Check, Sparkles, Loader2 } from "lucide-react";
+import FeaturesSection from "../components/FeaturesSection";
 
 const FIELDS = [
   { label: "Company", value: "Kanto Logistics Ltd." },
@@ -204,64 +205,68 @@ const Home = () => {
 
   return (
     <main className="relative min-h-screen bg-[#07071c] overflow-hidden">
-      {/* ambient background glow */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[520px] w-[820px] rounded-full bg-indigo-600/20 blur-[120px]" />
-        <div className="absolute top-1/3 -right-40 h-[380px] w-[380px] rounded-full bg-blue-600/10 blur-[100px]" />
+      <div className="relative min-h-screen overflow-hidden">
+        {/* ambient background glow */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[520px] w-[820px] rounded-full bg-indigo-600/20 blur-[120px]" />
+          <div className="absolute top-1/3 -right-40 h-[380px] w-[380px] rounded-full bg-blue-600/10 blur-[100px]" />
+        </div>
+
+        <section className="relative px-4 sm:px-6 lg:px-8 pt-14 sm:pt-20 lg:pt-24 pb-16 sm:pb-24">
+          <div className="relative mx-auto max-w-4xl text-center">
+            <HeroDecoration />
+
+            <Reveal show={mounted} delay={0} className="flex justify-center">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs sm:text-sm text-slate-300">
+                The AI Operating System for Modern Businesses.
+              </span>
+            </Reveal>
+
+            <Reveal show={mounted} delay={100}>
+              <h1 className="mt-6 text-[2.1rem] leading-[1.1] sm:text-5xl md:text-6xl font-bold tracking-tight text-white text-balance">
+                Create Business Documents
+                <br className="hidden sm:block" /> With{" "}
+                <span className="text-indigo-400">Ahiia.AI</span> Faster.
+              </h1>
+            </Reveal>
+
+            <Reveal show={mounted} delay={180}>
+              <p className="mt-5 sm:mt-6 text-base sm:text-lg text-slate-300 max-w-2xl mx-auto text-balance">
+                Generate professional proposals, pitch decks, SOPs, contracts,
+                and marketing plans tailored to your business in minutes.
+              </p>
+            </Reveal>
+
+            <Reveal show={mounted} delay={260}>
+              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+                <a
+                  href="#get-started"
+                  className="group inline-flex items-center gap-2 rounded-full bg-indigo-500 hover:bg-indigo-400 px-6 py-3 text-sm font-semibold text-white transition-all duration-200 hover:shadow-[0_0_0_6px_rgba(99,102,241,0.15)] w-full sm:w-auto justify-center"
+                >
+                  Get Started
+                  <ArrowRight
+                    size={16}
+                    className="transition-transform duration-200 group-hover:translate-x-0.5"
+                  />
+                </a>
+                <a
+                  href="#how-it-works"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/15 px-6 py-3 text-sm font-medium text-slate-200 hover:bg-white/5 transition-colors duration-200 w-full sm:w-auto justify-center"
+                >
+                  <Play size={14} />
+                  See How It Works
+                </a>
+              </div>
+            </Reveal>
+          </div>
+
+          <div className="relative mx-auto mt-12 sm:mt-16 max-w-5xl">
+            <HeroMock show={mounted} />
+          </div>
+        </section>
+
+        <FeaturesSection />
       </div>
-
-      <section className="relative px-4 sm:px-6 lg:px-8 pt-14 sm:pt-20 lg:pt-24 pb-16 sm:pb-24">
-        <div className="relative mx-auto max-w-4xl text-center">
-          <HeroDecoration />
-
-          <Reveal show={mounted} delay={0} className="flex justify-center">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs sm:text-sm text-slate-300">
-              The AI Operating System for Modern Businesses.
-            </span>
-          </Reveal>
-
-          <Reveal show={mounted} delay={100}>
-            <h1 className="mt-6 text-[2.1rem] leading-[1.1] sm:text-5xl md:text-6xl font-bold tracking-tight text-white text-balance">
-              Create Business Documents
-              <br className="hidden sm:block" /> With{" "}
-              <span className="text-indigo-400">Ahiia.AI</span> Faster.
-            </h1>
-          </Reveal>
-
-          <Reveal show={mounted} delay={180}>
-            <p className="mt-5 sm:mt-6 text-base sm:text-lg text-slate-300 max-w-2xl mx-auto text-balance">
-              Generate professional proposals, pitch decks, SOPs, contracts, and
-              marketing plans tailored to your business in minutes.
-            </p>
-          </Reveal>
-
-          <Reveal show={mounted} delay={260}>
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-              <a
-                href="#get-started"
-                className="group inline-flex items-center gap-2 rounded-full bg-indigo-500 hover:bg-indigo-400 px-6 py-3 text-sm font-semibold text-white transition-all duration-200 hover:shadow-[0_0_0_6px_rgba(99,102,241,0.15)] w-full sm:w-auto justify-center"
-              >
-                Get Started
-                <ArrowRight
-                  size={16}
-                  className="transition-transform duration-200 group-hover:translate-x-0.5"
-                />
-              </a>
-              <a
-                href="#how-it-works"
-                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-6 py-3 text-sm font-medium text-slate-200 hover:bg-white/5 transition-colors duration-200 w-full sm:w-auto justify-center"
-              >
-                <Play size={14} />
-                See How It Works
-              </a>
-            </div>
-          </Reveal>
-        </div>
-
-        <div className="relative mx-auto mt-12 sm:mt-16 max-w-5xl">
-          <HeroMock show={mounted} />
-        </div>
-      </section>
     </main>
   );
 };
