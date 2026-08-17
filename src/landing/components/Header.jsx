@@ -86,13 +86,13 @@ const Header = () => {
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-3">
             <a
-              href="#get-started"
+              href="/signup"
               className="px-4 py-2 text-sm font-medium text-white rounded-full border border-white/15 hover:bg-white/5 transition-colors duration-200"
             >
               Get Started
             </a>
             <a
-              href="#login"
+              href="/login"
               className="px-4 py-2 text-sm font-semibold text-white rounded-full bg-indigo-500 hover:bg-indigo-400 transition-colors duration-200"
             >
               Log In
@@ -138,14 +138,14 @@ const Header = () => {
           ))}
           <div className="flex flex-col gap-2 mt-3">
             <a
-              href="#get-started"
+              href="/signup"
               onClick={() => setMobileOpen(false)}
               className="px-4 py-2.5 text-center text-sm font-medium text-white rounded-full border border-white/15"
             >
               Get Started
             </a>
             <a
-              href="#login"
+              href="/login"
               onClick={() => setMobileOpen(false)}
               className="px-4 py-2.5 text-center text-sm font-semibold text-white rounded-full bg-indigo-500"
             >

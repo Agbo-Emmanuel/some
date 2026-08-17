@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { ArrowRight, Play, Check, Sparkles, Loader2 } from "lucide-react";
 import FeaturesSection from "../components/FeaturesSection";
+import AhiiaWorkspace from "../components/AhiiaWorkspace";
+import DocumentLibrary from "../components/DocumentLibrary";
+import AiQualitySection from "../components/AiqualitySection";
+import WaitlistCta from "../components/WaitListCta";
 
 const FIELDS = [
   { label: "Company", value: "Kanto Logistics Ltd." },
@@ -266,6 +270,10 @@ const Home = () => {
         </section>
 
         <FeaturesSection />
+        <AhiiaWorkspace />
+        <DocumentLibrary />
+        <AiQualitySection />
+        <WaitlistCta />
       </div>
     </main>
   );
