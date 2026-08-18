@@ -3,7 +3,7 @@ import { ArrowRight, Play, Check, Sparkles, Loader2 } from "lucide-react";
 import FeaturesSection from "../components/FeaturesSection";
 import AhiiaWorkspace from "../components/AhiiaWorkspace";
 import DocumentLibrary from "../components/DocumentLibrary";
-import AiQualitySection from "../components/AiqualitySection";
+import AiQualitySection from "../components/AiQualitySection";
 import WaitlistCta from "../components/WaitListCta";
 
 const FIELDS = [
