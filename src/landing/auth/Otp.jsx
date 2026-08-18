@@ -140,7 +140,7 @@ const Otp = () => {
         {/* right panel */}
         <div className="flex-1 overflow-y-auto p-8 sm:p-10 lg:p-12">
           <div className="mx-auto flex max-w-md flex-col">
-            <div className="flex justify-end">
+            {/* <div className="flex justify-end">
               <a
                 href="#"
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 transition-colors duration-200 hover:text-slate-800"
@@ -148,7 +148,7 @@ const Otp = () => {
                 <HiArrowLeft className="h-3.5 w-3.5" />
                 Back to site
               </a>
-            </div>
+            </div> */}
 
             <div className="mt-6 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-indigo-600">
               <HiOutlineMail className="h-5 w-5" />

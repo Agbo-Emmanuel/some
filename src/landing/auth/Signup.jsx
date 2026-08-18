@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { HiOutlineEye, HiOutlineEyeSlash, HiArrowLeft } from "react-icons/hi2";
 import { HiSparkles, HiCheck } from "react-icons/hi2";
 import { HiShieldCheck } from "react-icons/hi2";
 import { FcGoogle } from "react-icons/fc";
+import { useNavigate } from "react-router-dom";
 
 const perks = [
   "Keep your business knowledge in one place",
@@ -46,6 +47,7 @@ const PasswordInput = ({ label, hint, placeholder, value, onChange }) => {
 };
 
 const Signup = () => {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("create");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,7 +56,7 @@ const Signup = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log({ email, password, repeatPassword, accepted });
+    navigate("/otp");
   };
 
   return (
@@ -112,7 +114,7 @@ const Signup = () => {
         {/* right panel */}
         <div className="flex-1 overflow-y-auto p-8 sm:p-10 lg:p-12">
           <div className="mx-auto flex max-w-md flex-col">
-            <div className="flex justify-end">
+            {/* <div className="flex justify-end">
               <a
                 href="#"
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 transition-colors duration-200 hover:text-slate-800"
@@ -120,10 +122,10 @@ const Signup = () => {
                 <HiArrowLeft className="h-3.5 w-3.5" />
                 Back to site
               </a>
-            </div>
+            </div> */}
 
             {/* tabs */}
-            <div className="mt-6 grid grid-cols-2 rounded-full bg-slate-100 p-1">
+            {/* <div className="mt-6 grid grid-cols-2 rounded-full bg-slate-100 p-1">
               <button
                 type="button"
                 onClick={() => setTab("create")}
@@ -146,7 +148,7 @@ const Signup = () => {
               >
                 Sign in
               </button>
-            </div>
+            </div> */}
 
             <h2 className="mt-8 text-2xl font-bold text-slate-900">Sign up</h2>
             <p className="mt-1 text-sm text-slate-500">
@@ -222,8 +224,8 @@ const Signup = () => {
               Already have an account?{" "}
               <button
                 type="button"
-                onClick={() => setTab("signin")}
-                className="font-semibold text-indigo-600 hover:text-indigo-700"
+                onClick={() => navigate("/login")}
+                className="font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer"
               >
                 Sign in
               </button>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   HiSparkles,
   HiCheck,
@@ -7,6 +7,7 @@ import {
 } from "react-icons/hi2";
 import { HiOutlineEye, HiOutlineEyeSlash } from "react-icons/hi2";
 import { FcGoogle } from "react-icons/fc";
+import { useNavigate } from "react-router-dom";
 
 const perks = [
   "Access your business knowledge",
@@ -15,6 +16,7 @@ const perks = [
 ];
 
 const Login = () => {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -78,7 +80,7 @@ const Login = () => {
         {/* right panel */}
         <div className="flex-1 overflow-y-auto p-8 sm:p-10 lg:p-12">
           <div className="mx-auto flex max-w-md flex-col">
-            <div className="flex justify-end">
+            {/* <div className="flex justify-end">
               <a
                 href="#"
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 transition-colors duration-200 hover:text-slate-800"
@@ -86,10 +88,10 @@ const Login = () => {
                 <HiArrowLeft className="h-3.5 w-3.5" />
                 Back to site
               </a>
-            </div>
+            </div> */}
 
             {/* tabs */}
-            <div className="mt-6 grid grid-cols-2 rounded-full bg-slate-100 p-1">
+            {/* <div className="mt-6 grid grid-cols-2 rounded-full bg-slate-100 p-1">
               <button
                 type="button"
                 onClick={() => setTab("create")}
@@ -112,7 +114,7 @@ const Login = () => {
               >
                 Sign in
               </button>
-            </div>
+            </div> */}
 
             <h2 className="mt-8 text-2xl font-bold text-slate-900">Sign in</h2>
             <p className="mt-1 text-sm text-slate-500">
@@ -140,7 +142,7 @@ const Login = () => {
                     Password
                   </label>
                   <a
-                    href="#"
+                    href="/forgot-password"
                     className="text-xs font-semibold text-indigo-600 transition-colors duration-200 hover:text-indigo-700"
                   >
                     Forgot password?
@@ -198,8 +200,8 @@ const Login = () => {
               New to Ahiia.Ai?{" "}
               <button
                 type="button"
-                onClick={() => setTab("create")}
-                className="font-semibold text-indigo-600 hover:text-indigo-700"
+                onClick={() => navigate("/signup")}
+                className="font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer"
               >
                 Create account
               </button>
