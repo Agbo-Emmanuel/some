@@ -1,8 +1,8 @@
 import React from "react";
 import { HiSparkles } from "react-icons/hi2";
 import { FiTwitter, FiLinkedin, FiInstagram } from "react-icons/fi";
-
-const navLinks = ["Product", "How It Works", "Features", "About"];
+import { NAV_LINKS } from "./Header";
+import { scrollToSection } from "../../utils/scrollToSection";
 
 const socials = [
   { icon: FiTwitter, label: "Twitter" },
@@ -11,6 +11,11 @@ const socials = [
 ];
 
 const Footer = () => {
+  const handleNavClick = (id) => (e) => {
+    e.preventDefault();
+    scrollToSection(id);
+  };
+
   return (
     <footer className="w-full bg-white px-4 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-6xl border-t border-slate-100">
@@ -28,13 +33,14 @@ const Footer = () => {
 
           {/* nav links */}
           <nav className="flex flex-wrap gap-x-8 gap-y-3 lg:pt-2">
-            {navLinks.map((link) => (
+            {NAV_LINKS.map((link) => (
               <a
-                key={link}
-                href="#"
+                key={link.id}
+                href={`#${link.id}`}
+                onClick={handleNavClick(link.id)}
                 className="text-sm text-slate-600 transition-colors duration-200 hover:text-slate-900"
               >
-                {link}
+                {link.label}
               </a>
             ))}
           </nav>

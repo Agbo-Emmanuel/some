@@ -8,14 +8,6 @@ import {
   FiBox,
 } from "react-icons/fi";
 
-/**
- * Ahiia.Ai — "How it works" + Document Workspace demo
- * --------------------------------------------------
- * Tailwind CSS + react-icons. Self-contained, responsive, no external state.
- *
- * Drop <AhiiaWorkspace /> anywhere in a Tailwind-enabled React app.
- */
-
 const STEPS = [
   {
     id: "01",
@@ -68,17 +60,17 @@ function HowItWorks() {
         <br className="hidden sm:block" /> finished document
       </h2>
 
-      <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10 text-left">
+      <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-8 text-left">
         {STEPS.map((step) => (
           <div key={step.id}>
-            <div className="h-0.5 w-10 bg-indigo-500 mb-4" />
-            <div className="text-xs font-semibold tracking-wide text-indigo-600 mb-2">
+            <div className="h-0.5 w-10 bg-[#007498] mb-4" />
+            <div className="text-xs font-semibold tracking-wide text-[#007498] mb-2">
               {step.id}
             </div>
-            <h3 className="text-sm sm:text-base font-semibold text-slate-900 mb-2">
+            <h3 className="text-sm sm:text-sm font-bold text-slate-900 mb-2">
               {step.title}
             </h3>
-            <p className="text-sm text-slate-500 leading-relaxed">
+            <p className="text-xs text-slate-500 leading-relaxed">
               {step.body}
             </p>
           </div>
@@ -115,26 +107,28 @@ function ChecklistRow({ label, done, delayMs, numbered, index }) {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-3">
-          <span
-            className={`text-sm truncate ${
-              numbered ? "font-semibold text-slate-900" : "text-slate-700"
-            }`}
-          >
-            {label}
-          </span>
-          {visible && done ? (
+          <div className="flex items-center gap-1">
+            {numbered ? null : (
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400 shrink-0">
+                <FiCheck size={11} strokeWidth={3} />
+              </span>
+            )}
+            <span
+              className={`text-sm truncate ${
+                numbered ? "font-semibold text-slate-900" : "text-slate-700"
+              }`}
+            >
+              {label}
+            </span>
+          </div>
+          {numbered ? (
             <FiCheck className="shrink-0 text-emerald-500" size={16} />
-          ) : (
-            <FiLoader
-              className="shrink-0 text-slate-300 animate-spin"
-              size={14}
-            />
-          )}
+          ) : null}
         </div>
         {numbered && (
           <div className="mt-1.5 h-1 w-full rounded-full bg-slate-100 overflow-hidden">
             <div
-              className={`h-full rounded-full bg-indigo-400 transition-all duration-500 ease-out ${
+              className={`h-full rounded-full bg-indigo-200 transition-all duration-500 ease-out ${
                 visible ? "w-full" : "w-0"
               }`}
             />
@@ -176,9 +170,9 @@ function DocumentWorkspace() {
 
   return (
     <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 pb-20">
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="bg-white shadow-2xl overflow-hidden">
         {/* Top bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-200 px-5 py-3">
           <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
             <span className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-900 text-white">
               <FiBox size={13} />
@@ -186,33 +180,32 @@ function DocumentWorkspace() {
             Ahiia.Ai · Document workspace
           </div>
           <div className="text-xs sm:text-sm text-slate-500">
-            Kanto Logistics Ltd. ·{" "}
-            <span className="text-emerald-600 font-medium">
-              Business context active
-            </span>
+            Kanto Logistics Ltd. · Business context active
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-5 sm:p-8">
           {/* Left: request + generation status */}
           <div key={`left-${runId}`}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">
+            <p className="text-xs font-semibold tracking-wide text-slate-500 mb-3">
               Your request
             </p>
 
-            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-              <p className="flex-1 text-sm text-slate-800">{REQUEST_TEXT}</p>
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-gray-50 px-2 py-2 shadow-xs">
+              <p className="flex-1 text-sm text-slate-800 font-medium">
+                {REQUEST_TEXT}
+              </p>
               <button
                 type="button"
                 onClick={replay}
                 aria-label="Generate document"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white transition-transform hover:scale-105 hover:bg-indigo-700 active:scale-95"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#2B63F6] text-white transition-transform hover:scale-105 hover:bg-indigo-700 active:scale-95"
               >
                 <FiArrowUp size={16} />
               </button>
             </div>
 
-            <p className="mt-3 text-xs text-slate-400 leading-relaxed">
+            <p className="mt-3 text-xs text-slate-500 leading-relaxed">
               Ahiia reads this alongside your company profile, brand kit and
               business rules.
             </p>
@@ -231,14 +224,14 @@ function DocumentWorkspace() {
                     {isComplete ? "Complete" : "Generating…"}
                   </span>
                 </div>
-                <span className="text-sm font-semibold text-indigo-600 tabular-nums">
+                <span className="text-sm font-semibold text-[#2B63F6] tabular-nums">
                   {progress}%
                 </span>
               </div>
 
               <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden mb-4">
                 <div
-                  className="h-full rounded-full bg-indigo-500 transition-[width] duration-150 ease-linear"
+                  className="h-full rounded-full bg-[#2B63F6] transition-[width] duration-150 ease-linear"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -259,11 +252,11 @@ function DocumentWorkspace() {
 
           {/* Right: generated document preview */}
           <div key={`right-${runId}`} className="flex flex-col">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">
+            <p className="text-xs font-semibold tracking-wide text-slate-500 mb-3">
               Generated document
             </p>
 
-            <div className="flex flex-1 flex-col rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="flex flex-1 flex-col shadow-2xl overflow-hidden rounded-bl-2xl rounded-br-2xl">
               <div className="bg-slate-900 px-5 py-5 text-white">
                 <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-2">
                   Proposal

@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
+import { scrollToSection } from "../../utils/scrollToSection";
+import { useScrollSpy } from "../../hooks/useScrollSpy";
 
-const NAV_LINKS = [
-  { label: "Product", href: "#product" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Features", href: "#features" },
-  { label: "About", href: "#about" },
+// `id` must match the id on the corresponding section wrapper in Home.jsx.
+// This same array shape can be reused for the footer nav.
+export const NAV_LINKS = [
+  { label: "Product", id: "product" },
+  { label: "How It Works", id: "how-it-works" },
+  { label: "Features", id: "features" },
+  { label: "About", id: "about" },
 ];
 
 const Logo = () => (
@@ -35,7 +39,13 @@ const Logo = () => (
 const Header = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeLink, setActiveLink] = useState("Product");
+
+  // Which section is currently in view drives the default active state...
+  const spyActiveId = useScrollSpy(NAV_LINKS.map((l) => l.id));
+  // ...but a click sets it immediately, so the highlight doesn't lag
+  // behind while the smooth scroll animation is still in flight.
+  const [clickedId, setClickedId] = useState(null);
+  const activeId = clickedId ?? spyActiveId;
 
   // Solidify the header once the page scrolls, keep it transparent at the very top
   useEffect(() => {
@@ -52,6 +62,21 @@ const Header = () => {
       document.body.style.overflow = "";
     };
   }, [mobileOpen]);
+
+  // Once the user clicks a link, stop forcing that id and hand control
+  // back to the scroll spy after the scroll animation has settled.
+  useEffect(() => {
+    if (clickedId === null) return;
+    const timer = setTimeout(() => setClickedId(null), 900);
+    return () => clearTimeout(timer);
+  }, [clickedId]);
+
+  const handleNavClick = (id) => (e) => {
+    e.preventDefault();
+    setClickedId(id);
+    scrollToSection(id);
+    setMobileOpen(false);
+  };
 
   return (
     <header
@@ -70,10 +95,10 @@ const Header = () => {
             {NAV_LINKS.map((link) => (
               <a
                 key={link.label}
-                href={link.href}
-                onClick={() => setActiveLink(link.label)}
+                href={`#${link.id}`}
+                onClick={handleNavClick(link.id)}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 ${
-                  activeLink === link.label
+                  activeId === link.id
                     ? "bg-white/10 text-white"
                     : "text-slate-300 hover:text-white"
                 }`}
@@ -122,13 +147,10 @@ const Header = () => {
           {NAV_LINKS.map((link) => (
             <a
               key={link.label}
-              href={link.href}
-              onClick={() => {
-                setActiveLink(link.label);
-                setMobileOpen(false);
-              }}
+              href={`#${link.id}`}
+              onClick={handleNavClick(link.id)}
               className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                activeLink === link.label
+                activeId === link.id
                   ? "bg-white/10 text-white"
                   : "text-slate-300 hover:text-white hover:bg-white/5"
               }`}

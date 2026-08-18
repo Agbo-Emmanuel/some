@@ -113,9 +113,9 @@ const FeaturesSection = () => {
     <section
       id="features"
       ref={ref}
-      className="relative bg-slate-50 px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-28"
+      className="w-full relative bg-slate-50 px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-26"
     >
-      <div className="mx-auto max-w-3xl text-center">
+      <div className="mx-auto max-w-5xl text-center">
         <Reveal show={inView} delay={0} className="flex justify-center">
           <span className="inline-flex items-center rounded-full bg-indigo-100 px-4 py-1.5 text-xs sm:text-sm font-semibold text-indigo-700">
             Built for modern businesses
@@ -124,21 +124,19 @@ const FeaturesSection = () => {
 
         <Reveal show={inView} delay={80}>
           <h2 className="mt-5 text-[1.75rem] leading-[1.15] sm:text-4xl md:text-5xl font-bold tracking-tight text-slate-900 text-balance">
-            From Idea to Professional Document in Minutes
+            Turn Your Business Ideas Into Professional Documents In Minutes.
           </h2>
         </Reveal>
 
         <Reveal show={inView} delay={160}>
-          <p className="mt-5 text-sm sm:text-base text-slate-500 max-w-2xl mx-auto text-balance">
-            Ahiia.Ai removes the repetitive work behind business documents, the
-            blank page, the retyped company details, the formatting, the
-            last-minute proofread, so your team can focus on the decisions that
-            actually win the deal.
+          <p className="mt-5 text-sm sm:text-base text-slate-500 mx-auto text-balance">
+            AHIIA.AI uses AI to help create proposals, business plans,
+            contracts, SOPs and more from the information you already have.
           </p>
         </Reveal>
       </div>
 
-      <div className="mx-auto mt-10 sm:mt-12 grid max-w-6xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto mt-10 sm:mt-12 grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {FEATURES.map((feature, i) => (
           <FeatureCard
             key={feature.title}

@@ -5,6 +5,7 @@ import AhiiaWorkspace from "../components/AhiiaWorkspace";
 import DocumentLibrary from "../components/DocumentLibrary";
 import AiQualitySection from "../components/AiQualitySection";
 import WaitlistCta from "../components/WaitListCta";
+import { scrollToSection } from "../../utils/scrollToSection";
 
 const FIELDS = [
   { label: "Company", value: "Kanto Logistics Ltd." },
@@ -35,7 +36,7 @@ const Reveal = ({ show, delay = 0, className = "", children }) => (
 );
 
 const HeroMock = ({ show }) => (
-  <Reveal show={show} delay={350} className="w-full">
+  <Reveal show={show} delay={350} className="max-w-4xl">
     <div className="relative rounded-2xl md:rounded-3xl border border-gray-300 bg-white backdrop-blur-xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)] overflow-hidden">
       {/* card header */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-300">
@@ -117,9 +118,9 @@ const HeroMock = ({ show }) => (
               Brand Kit Applied
             </div>
             <div className="flex items-center gap-2">
-              <span className="h-5 w-5 rounded-full bg-indigo-800 border border-white/10" />
-              <span className="h-5 w-5 rounded-full bg-indigo-500 border border-white/10" />
-              <span className="h-5 w-5 rounded-full bg-indigo-300 border border-white/10" />
+              <span className="h-7 w-7 rounded-sm bg-indigo-800 border border-white/10" />
+              <span className="h-7 w-7 rounded-sm bg-indigo-500 border border-white/10" />
+              <span className="h-7 w-7 rounded-sm bg-indigo-300 border border-white/10" />
               <span className="ml-1 text-[11px] text-gray-500 leading-tight">
                 Montserrat &middot; Logo
               </span>
@@ -216,8 +217,11 @@ const Home = () => {
           <div className="absolute top-1/3 -right-40 h-[380px] w-[380px] rounded-full bg-blue-600/10 blur-[100px]" />
         </div>
 
-        <section className="relative px-4 sm:px-6 lg:px-8 pt-14 sm:pt-20 lg:pt-24 pb-16 sm:pb-24">
-          <div className="relative mx-auto max-w-4xl text-center">
+        <section
+          id="product"
+          className="scroll-mt-20 md:scroll-mt-24 relative px-4 sm:px-6 lg:px-8 pt-14 sm:pt-20 lg:pt-24 pb-16 sm:pb-24"
+        >
+          <div className="relative mx-auto max-w-5xl text-center">
             <HeroDecoration />
 
             <Reveal show={mounted} delay={0} className="flex justify-center">
@@ -227,17 +231,18 @@ const Home = () => {
             </Reveal>
 
             <Reveal show={mounted} delay={100}>
-              <h1 className="mt-6 text-[2.1rem] leading-[1.1] sm:text-5xl md:text-6xl font-bold tracking-tight text-white text-balance">
-                Create Business Documents
-                <br className="hidden sm:block" /> With{" "}
-                <span className="text-indigo-400">Ahiia.AI</span> Faster.
+              <h1 className="mt-6 text-[2.1rem] leading-[1.2] sm:text-5xl md:text-6xl font-bold tracking-tight text-white text-balance">
+                Create Professional Business Documents With{" "}
+                <span className="text-indigo-400">Ahiia.AI</span>
+                <br /> In Minutes.
               </h1>
             </Reveal>
 
             <Reveal show={mounted} delay={180}>
-              <p className="mt-5 sm:mt-6 text-base sm:text-lg text-slate-300 max-w-2xl mx-auto text-balance">
-                Generate professional proposals, pitch decks, SOPs, contracts,
-                and marketing plans tailored to your business in minutes.
+              <p className="mt-5 sm:mt-6 text-base sm:text-lg text-slate-300 mx-auto text-balance">
+                Proposals and business plans to pitch decks, contracts, SOPs,
+                marketing plan and more, AHIIA helps you create polished
+                business documents faster, smarter and with confidence.
               </p>
             </Reveal>
 
@@ -255,6 +260,10 @@ const Home = () => {
                 </a>
                 <a
                   href="#how-it-works"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollToSection("how-it-works");
+                  }}
                   className="inline-flex items-center gap-2 rounded-full border border-white/15 px-6 py-3 text-sm font-medium text-slate-200 hover:bg-white/5 transition-colors duration-200 w-full sm:w-auto justify-center"
                 >
                   <Play size={14} />
@@ -264,15 +273,27 @@ const Home = () => {
             </Reveal>
           </div>
 
-          <div className="relative mx-auto mt-12 sm:mt-16 max-w-5xl">
+          <div className="relative mx-auto mt-12 sm:mt-16 w-full flex justify-center">
             <HeroMock show={mounted} />
           </div>
         </section>
 
-        <FeaturesSection />
-        <AhiiaWorkspace />
-        <DocumentLibrary />
-        <AiQualitySection />
+        <div id="features" className="scroll-mt-20 md:scroll-mt-24">
+          <FeaturesSection />
+        </div>
+
+        <div id="how-it-works" className="scroll-mt-20 md:scroll-mt-24">
+          <AhiiaWorkspace />
+        </div>
+
+        <div id="about" className="scroll-mt-20 md:scroll-mt-24">
+          <DocumentLibrary />
+        </div>
+
+        <div id="ai-quality" className="scroll-mt-20 md:scroll-mt-24">
+          <AiQualitySection />
+        </div>
+
         <WaitlistCta />
       </div>
     </main>

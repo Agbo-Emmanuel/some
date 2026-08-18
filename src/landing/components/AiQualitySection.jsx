@@ -35,7 +35,7 @@ const SkeletonLine = ({ w = "w-full" }) => (
 
 const FeatureRow = ({ title, description }) => (
   <div className="flex gap-3 group">
-    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 transition-colors duration-200 group-hover:bg-indigo-500 group-hover:text-white">
+    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors duration-200 group-hover:bg-indigo-500 group-hover:text-white">
       <HiCheck className="h-3 w-3" strokeWidth={1} />
     </span>
     <div>
@@ -50,7 +50,7 @@ const FeatureRow = ({ title, description }) => (
 const ProposalCard = () => (
   <div className="relative">
     {/* ambient glow behind the card */}
-    <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-indigo-200/40 blur-3xl" />
+    <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-indigo-300/30 blur-3xl" />
 
     <div className="w-full rounded-2xl bg-white p-6 shadow-xl shadow-indigo-100/60 ring-1 ring-slate-100 transition-transform duration-500 ease-out hover:-translate-y-1">
       {/* header */}
@@ -91,7 +91,7 @@ const ProposalCard = () => (
           Pricing section has no payment schedule. Proposals with clear
           milestones close faster.
         </p>
-        <button className="mt-3 text-xs font-semibold text-indigo-600 transition-colors hover:text-indigo-700">
+        <button className="mt-3 text-xs font-semibold text-indigo-600 transition-colors hover:text-indigo-700 bg-white px-2 py-1.5 rounded-sm shadow-sm cursor-pointer">
           Add payment schedule
         </button>
       </div>
@@ -120,7 +120,7 @@ const ProposalCard = () => (
 const AiQualitySection = () => {
   return (
     <section className="w-full bg-white px-4 py-16 sm:px-8 sm:py-20 lg:px-12">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-16">
         {/* left column */}
         <div>
           <span className="inline-flex items-center rounded-full bg-indigo-100 px-4 py-1.5 text-xs font-semibold text-indigo-600">
@@ -146,7 +146,7 @@ const AiQualitySection = () => {
 
         {/* right column */}
         <div className="flex justify-center lg:justify-end">
-          <div className="w-full max-w-md">
+          <div className="w-full max-w-xl">
             <ProposalCard />
           </div>
         </div>
