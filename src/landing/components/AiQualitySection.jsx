@@ -132,7 +132,7 @@ const AiQualitySection = () => {
           </h2>
 
           <p className="mt-5 max-w-md text-base leading-relaxed text-slate-500">
-            Ahiia.Ai is built to produce documents you can actually send. Every
+            Ahiia.AI is built to produce documents you can actually send. Every
             draft is grounded in your business context, checked against a proven
             structure, and open to review before it leaves your workspace.
           </p>

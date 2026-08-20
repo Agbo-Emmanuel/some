@@ -7,12 +7,13 @@ import {
   FiLoader,
   FiBox,
 } from "react-icons/fi";
+import logo from "../../assets/ahiia_icon.svg";
 
 const STEPS = [
   {
     id: "01",
     title: "Tell Ahiia about your business",
-    body: "Add your company profile, audience, and tone once. Ahiia.Ai remembers it.",
+    body: "Add your company profile, audience, and tone once. Ahiia.AI remembers it.",
   },
   {
     id: "02",
@@ -21,7 +22,7 @@ const STEPS = [
   },
   {
     id: "03",
-    title: "Let Ahiia.Ai generate it",
+    title: "Let Ahiia.AI generate it",
     body: "A structured first draft is built section by section from your context.",
   },
   {
@@ -175,9 +176,9 @@ function DocumentWorkspace() {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-200 px-5 py-3">
           <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
             <span className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-900 text-white">
-              <FiBox size={13} />
+              <img src={logo} alt="Logo" className="h-4 w-4" />
             </span>
-            Ahiia.Ai · Document workspace
+            Ahiia.AI Document workspace
           </div>
           <div className="text-xs sm:text-sm text-slate-500">
             Kanto Logistics Ltd. · Business context active

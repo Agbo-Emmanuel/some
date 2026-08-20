@@ -6,6 +6,7 @@ import { FcGoogle } from "react-icons/fc";
 import { useNavigate } from "react-router-dom";
 import { register } from "../../services/auth.service";
 import { toast } from "react-toastify";
+import logo from "../../assets/ahiia_icon.svg";
 
 const perks = [
   "Keep your business knowledge in one place",
@@ -15,6 +16,7 @@ const perks = [
 
 const PasswordInput = ({ label, hint, placeholder, value, onChange }) => {
   const [visible, setVisible] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div>
@@ -97,10 +99,13 @@ const Signup = () => {
           <div className="pointer-events-none absolute right-10 top-40 h-40 w-40 rotate-12 border border-white/5" />
           <div className="pointer-events-none absolute -bottom-10 left-0 h-52 w-52 rotate-45 border border-white/5" />
 
-          <div className="relative">
+          <div
+            className="relative cursor-pointer"
+            onClick={() => navigate("/")}
+          >
             <div className="flex items-center gap-2">
-              <HiSparkles className="h-5 w-5 text-indigo-300" />
-              <span className="text-lg font-bold text-white">Ahiia.Ai</span>
+              <img src={logo} alt="Logo" className="h-6 w-6" />
+              <span className="text-lg font-bold text-white">Ahiia.AI</span>
             </div>
           </div>
 

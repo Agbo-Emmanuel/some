@@ -3,9 +3,11 @@ import { HiSparkles } from "react-icons/hi2";
 import { FiTwitter, FiLinkedin, FiInstagram } from "react-icons/fi";
 import { NAV_LINKS } from "./Header";
 import { scrollToSection } from "../../utils/scrollToSection";
+import logo from "../../assets/ahiia_icon.svg";
+import { FaXTwitter } from "react-icons/fa6";
 
 const socials = [
-  { icon: FiTwitter, label: "Twitter" },
+  { icon: FaXTwitter, label: "Twitter" },
   { icon: FiLinkedin, label: "LinkedIn" },
   { icon: FiInstagram, label: "Instagram" },
 ];
@@ -23,7 +25,7 @@ const Footer = () => {
           {/* brand */}
           <div className="max-w-xs">
             <div className="flex items-center gap-2">
-              <HiSparkles className="h-5 w-5 text-slate-900" />
+              <img src={logo} alt="Logo" className="h-6 w-6" />
               <span className="text-lg font-bold text-slate-900">Ahiia.Ai</span>
             </div>
             <p className="mt-2 text-sm leading-relaxed text-slate-500">

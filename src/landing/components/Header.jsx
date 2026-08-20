@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { scrollToSection } from "../../utils/scrollToSection";
 import { useScrollSpy } from "../../hooks/useScrollSpy";
+import logo from "../../assets/ahiia_icon.svg";
 
 // `id` must match the id on the corresponding section wrapper in Home.jsx.
 // This same array shape can be reused for the footer nav.
@@ -14,24 +15,9 @@ export const NAV_LINKS = [
 
 const Logo = () => (
   <a href="#" className="flex items-center gap-2 shrink-0">
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 28 28"
-      fill="none"
-      className="shrink-0"
-    >
-      <circle cx="7" cy="7" r="2.4" fill="#A5B4FC" />
-      <circle cx="14" cy="7" r="2.4" fill="#818CF8" />
-      <circle cx="21" cy="7" r="2.4" fill="#6366F1" />
-      <circle cx="7" cy="14" r="2.4" fill="#818CF8" />
-      <circle cx="14" cy="14" r="2.4" fill="#A5B4FC" />
-      <circle cx="21" cy="14" r="2.4" fill="#818CF8" />
-      <circle cx="7" cy="21" r="2.4" fill="#6366F1" />
-      <circle cx="14" cy="21" r="2.4" fill="#818CF8" />
-    </svg>
+    <img src={logo} alt="Logo" className="h-6 w-6" />
     <span className="text-white font-semibold text-lg tracking-tight">
-      Ahiia.Ai
+      Ahiia.AI
     </span>
   </a>
 );
@@ -62,8 +48,7 @@ const Header = () => {
       document.body.style.overflow = "";
     };
   }, [mobileOpen]);
-
-  // Once the user clicks a link, stop forcing that id and hand control
+// Once the user clicks a link, stop forcing that id and hand control
   // back to the scroll spy after the scroll animation has settled.
   useEffect(() => {
     if (clickedId === null) return;
