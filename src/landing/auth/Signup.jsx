@@ -4,6 +4,8 @@ import { HiSparkles, HiCheck } from "react-icons/hi2";
 import { HiShieldCheck } from "react-icons/hi2";
 import { FcGoogle } from "react-icons/fc";
 import { useNavigate } from "react-router-dom";
+import { register } from "../../services/auth.service";
+import { toast } from "react-toastify";
 
 const perks = [
   "Keep your business knowledge in one place",
@@ -48,15 +50,41 @@ const PasswordInput = ({ label, hint, placeholder, value, onChange }) => {
 
 const Signup = () => {
   const navigate = useNavigate();
-  const [tab, setTab] = useState("create");
+  // const [tab, setTab] = useState("create");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
   const [accepted, setAccepted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate("/otp");
+    setLoading(true);
+    if (password !== repeatPassword) {
+      toast.error("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+    if (!accepted) {
+      toast.error("Please accept the terms and conditions");
+      setLoading(false);
+      return;
+    }
+    const payload = {
+      email: email,
+      password: password,
+      acceptedTerms: accepted,
+    };
+    try {
+      const response = await register(payload);
+      console.log(response);
+      navigate("/otp", { state: { email: email } });
+    } catch (error) {
+      console.log(error);
+      toast.error(error.response?.data?.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -200,9 +228,10 @@ const Signup = () => {
 
               <button
                 type="submit"
-                className="w-full rounded-xl bg-[#141B4D] py-3.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#1E2A78] active:scale-[0.99]"
+                disabled={loading}
+                className="w-full cursor-pointer rounded-xl bg-[#141B4D] py-3.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#1E2A78] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create my account
+                {loading ? "Creating account..." : "Create my account"}
               </button>
             </form>
 
@@ -214,7 +243,7 @@ const Signup = () => {
 
             <button
               type="button"
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-3.5 text-sm font-semibold text-slate-700 transition-colors duration-200 hover:bg-slate-50"
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 py-3.5 text-sm font-semibold text-slate-700 transition-colors duration-200 hover:bg-slate-50"
             >
               <FcGoogle className="h-4 w-4" />
               Continue with Google
@@ -225,7 +254,7 @@ const Signup = () => {
               <button
                 type="button"
                 onClick={() => navigate("/login")}
-                className="font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer"
+                className="cursor-pointer font-semibold text-indigo-600 hover:text-indigo-700"
               >
                 Sign in
               </button>

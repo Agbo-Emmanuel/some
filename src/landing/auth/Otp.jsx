@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   HiSparkles,
   HiCheck,
@@ -7,6 +7,8 @@ import {
 } from "react-icons/hi2";
 import { HiOutlineMail } from "react-icons/hi";
 import { HiOutlineRefresh } from "react-icons/hi";
+import { useLocation, useNavigate } from "react-router-dom";
+import { verifyOtp } from "../../services/auth.service";
 
 const perks = [
   "Keep your business knowledge in one place",
@@ -24,10 +26,12 @@ const formatTime = (totalSeconds) => {
 };
 
 const Otp = () => {
-  const email = "yourmail@gmail.com";
+  const location = useLocation();
+  const email = location.state?.email;
   const [code, setCode] = useState(Array(CODE_LENGTH).fill(""));
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const inputsRef = useRef([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
@@ -81,7 +85,19 @@ const Otp = () => {
 
   const handleVerify = (e) => {
     e.preventDefault();
-    console.log("verifying code:", code.join(""));
+    if (!email) {
+      return;
+    }
+    const payload = {
+      email: email,
+      code: code.join(""),
+    };
+    try {
+      const response = verifyOtp(payload);
+      console.log(response);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const isComplete = code.every((d) => d !== "");
