@@ -8,8 +8,9 @@ import {
 import { HiOutlineMail } from "react-icons/hi";
 import { HiOutlineRefresh } from "react-icons/hi";
 import { useLocation, useNavigate } from "react-router-dom";
-import { verifyOtp } from "../../services/auth.service";
+import { resendOtp, verifyOtp } from "../../services/auth.service";
 import logo from "../../assets/ahiia_icon.svg";
+import { toast } from "react-toastify";
 const perks = [
   "Keep your business knowledge in one place",
   "Create documents using your business context",
@@ -76,11 +77,21 @@ const Otp = () => {
   };
 
   const handleResend = () => {
-    if (secondsLeft > 0) return;
-    setSecondsLeft(RESEND_SECONDS);
-    setCode(Array(CODE_LENGTH).fill(""));
-    focusInput(0);
-    console.log("resend code to", email);
+    if (!email) {
+      return;
+    }
+    const payload = {
+      email: email,
+    };
+    try {
+      const response = resendOtp(payload);
+      setSecondsLeft(RESEND_SECONDS);
+      console.log(response);
+      toast.success("OTP resent successfully");
+    } catch (error) {
+      console.log(error);
+      toast.error("Failed to resend OTP");
+    }
   };
 
   const handleVerify = (e) => {
@@ -228,19 +239,19 @@ const Otp = () => {
                 <button
                   type="button"
                   onClick={handleResend}
-                  disabled={secondsLeft > 0}
-                  className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 transition-colors duration-200 hover:text-indigo-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                  // disabled={secondsLeft > 0}
+                  className="inline-flex items-center cursor-pointer gap-1 text-sm font-semibold text-indigo-600 transition-colors duration-200 hover:text-indigo-700 disabled:cursor-not-allowed disabled:text-slate-400"
                 >
                   <HiOutlineRefresh className="h-3.5 w-3.5" />
                   Resend code
                 </button>
               </div>
-              <p className="mt-1 text-xs text-slate-500">
+              {/* <p className="mt-1 text-xs text-slate-500">
                 We can send a fresh code once the timer runs out.
-              </p>
+              </p> */}
             </div>
 
-            <p className="mt-6 text-center text-sm text-slate-500">
+            {/* <p className="mt-6 text-center text-sm text-slate-500">
               Wrong address?{" "}
               <button
                 type="button"
@@ -248,7 +259,7 @@ const Otp = () => {
               >
                 Use a different email
               </button>
-            </p>
+            </p> */}
           </div>
         </div>
       </div>
