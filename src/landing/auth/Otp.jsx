@@ -29,6 +29,7 @@ const formatTime = (totalSeconds) => {
 const Otp = () => {
   const location = useLocation();
   const email = location.state?.email;
+  const [loading, setLoading] = useState(false);
   const [code, setCode] = useState(Array(CODE_LENGTH).fill(""));
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const inputsRef = useRef([]);
@@ -94,7 +95,7 @@ const Otp = () => {
     }
   };
 
-  const handleVerify = (e) => {
+  const handleVerify = async (e) => {
     e.preventDefault();
     if (!email) {
       return;
@@ -104,10 +105,17 @@ const Otp = () => {
       code: code.join(""),
     };
     try {
-      const response = verifyOtp(payload);
+      setLoading(true);
+      const response = await verifyOtp(payload);
       console.log(response);
+
+      toast.success("OTP verified successfully");
+      navigate("/login");
     } catch (error) {
       console.log(error);
+      toast.error(error.message || "Failed to verify OTP");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -227,7 +235,14 @@ const Otp = () => {
                 disabled={!isComplete}
                 className="mt-6 w-full rounded-xl bg-[#141B4D] py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#1E2A78] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#141B4D]"
               >
-                Verify email
+                {loading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    Verifying...
+                  </div>
+                ) : (
+                  "Verify email"
+                )}
               </button>
             </form>
 

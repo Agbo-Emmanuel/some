@@ -9,6 +9,9 @@ import { HiOutlineEye, HiOutlineEyeSlash } from "react-icons/hi2";
 import { FcGoogle } from "react-icons/fc";
 import { useNavigate } from "react-router-dom";
 import logo from "../../assets/ahiia_icon.svg";
+import { toast } from "react-toastify";
+import { login } from "../../services/auth.service";
+import { useCookies } from "react-cookie";
 
 const perks = [
   "Access your business knowledge",
@@ -22,10 +25,35 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [, setCookie] = useCookies(["accessToken", "refreshToken"]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log({ email, password });
+    setLoading(true);
+    try {
+      const payload = {
+        email,
+        password,
+      };
+      const response = await login(payload);
+      console.log(response);
+      toast.success("Logged in successfully");
+
+      // const cookieOptions = formData.rememberMe
+      //   ? { path: "/", maxAge: 7 * 24 * 60 * 60 }
+      //   : { path: "/" };
+      const cookieOptions = { path: "/" };
+
+      setCookie("accessToken", response?.accessToken, cookieOptions);
+      setCookie("refreshToken", response?.refreshToken, cookieOptions);
+      // navigate("/workspace");
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message || "Failed to log in");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,7 +65,10 @@ const Login = () => {
           <div className="pointer-events-none absolute right-10 top-40 h-40 w-40 rotate-12 border border-white/5" />
           <div className="pointer-events-none absolute -bottom-10 left-0 h-52 w-52 rotate-45 border border-white/5" />
 
-          <div className="relative cursor-pointer" onClick={() => navigate("/")}>
+          <div
+            className="relative cursor-pointer"
+            onClick={() => navigate("/")}
+          >
             <div className="flex items-center gap-2">
               <img src={logo} alt="Logo" className="h-6 w-6" />
               <span className="text-lg font-bold text-white">Ahiia.AI</span>
@@ -177,9 +208,17 @@ const Login = () => {
 
               <button
                 type="submit"
-                className="w-full rounded-xl bg-[#141B4D] py-3.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#1E2A78] active:scale-[0.99]"
+                disabled={loading}
+                className="w-full cursor-pointer rounded-xl bg-[#141B4D] py-3.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#1E2A78] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#141B4D]"
               >
-                Sign in
+                {loading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    Signing in...
+                  </div>
+                ) : (
+                  "Sign in"
+                )}
               </button>
             </form>
 
