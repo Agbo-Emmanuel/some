@@ -110,7 +110,7 @@ const Otp = () => {
       console.log(response);
 
       toast.success("OTP verified successfully");
-      navigate("/login");
+      navigate("/login", { state: { isNewUser: true } });
     } catch (error) {
       console.log(error);
       toast.error(error.message || "Failed to verify OTP");

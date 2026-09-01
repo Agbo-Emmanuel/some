@@ -7,7 +7,7 @@ import {
 } from "react-icons/hi2";
 import { HiOutlineEye, HiOutlineEyeSlash } from "react-icons/hi2";
 import { FcGoogle } from "react-icons/fc";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/ahiia_icon.svg";
 import { toast } from "react-toastify";
 import { login } from "../../services/auth.service";
@@ -21,6 +21,9 @@ const perks = [
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isNewUser = location.state?.isNewUser;
+  // const isNewUser = true;
   const [tab, setTab] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,14 +43,16 @@ const Login = () => {
       console.log(response);
       toast.success("Logged in successfully");
 
-      // const cookieOptions = formData.rememberMe
-      //   ? { path: "/", maxAge: 7 * 24 * 60 * 60 }
-      //   : { path: "/" };
       const cookieOptions = { path: "/" };
 
       setCookie("accessToken", response?.accessToken, cookieOptions);
       setCookie("refreshToken", response?.refreshToken, cookieOptions);
-      // navigate("/workspace");
+
+      if (isNewUser) {
+        navigate("/onboarding");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error) {
       console.log(error);
       toast.error(error.message || "Failed to log in");

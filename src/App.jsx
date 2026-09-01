@@ -9,6 +9,8 @@ import Login from "./landing/auth/Login";
 import Otp from "./landing/auth/Otp";
 import ResetPassword from "./landing/auth/ResetPassword";
 import ForgotPassword from "./landing/auth/ForgotPassword";
+import Onboarding from "./landing/auth/Onboarding";
+import Dashboard from "./landing/pages/Dashboard";
 import { ToastContainer } from "react-toastify";
 
 const App = () => {
@@ -22,6 +24,8 @@ const App = () => {
         <Route path="/otp" element={<Otp />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route element={<Landing />}>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
