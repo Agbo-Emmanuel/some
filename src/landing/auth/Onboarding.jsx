@@ -443,7 +443,7 @@ const Spinner = () => (
 // ─── Main Component ───────────────────────────────────────────────────────────
 const Onboarding = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(2);
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [savingCards, setSavingCards] = useState({});
   const contentRef = useRef(null);
