@@ -10,7 +10,16 @@ import Otp from "./landing/auth/Otp";
 import ResetPassword from "./landing/auth/ResetPassword";
 import ForgotPassword from "./landing/auth/ForgotPassword";
 import Onboarding from "./landing/auth/Onboarding";
-import Dashboard from "./landing/pages/Dashboard";
+import DashboardLanding from "./dashboard/DashboardLanding";
+import Overview from "./dashboard/userDashboard/Overview";
+import Documents from "./dashboard/userDashboard/Documents";
+import CreateDocument from "./dashboard/userDashboard/CreateDocument";
+import Analytics from "./dashboard/userDashboard/Analytics";
+import CompanyProfile from "./dashboard/userDashboard/CompanyProfile";
+import BrandKit from "./dashboard/userDashboard/BrandKit";
+import Settings from "./dashboard/userDashboard/Settings";
+import Help from "./dashboard/userDashboard/Help";
+import AdminOverview from "./dashboard/adminDashboard/AdminOverview";
 import { ToastContainer } from "react-toastify";
 
 const App = () => {
@@ -25,7 +34,26 @@ const App = () => {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+
+        {/* User Dashboard */}
+        <Route path="/dashboard" element={<DashboardLanding role="user" />}>
+          <Route index element={<Overview />} />
+          <Route path="overview" element={<Overview />} />
+          <Route path="documents" element={<Documents />} />
+          <Route path="create-document" element={<CreateDocument />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="company-profile" element={<CompanyProfile />} />
+          <Route path="brand-kit" element={<BrandKit />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="help" element={<Help />} />
+        </Route>
+
+        {/* Admin Dashboard using the exact same structure */}
+        <Route path="/admin" element={<DashboardLanding role="admin" />}>
+          <Route index element={<AdminOverview />} />
+          <Route path="overview" element={<AdminOverview />} />
+        </Route>
+
         <Route element={<Landing />}>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
