@@ -1,54 +1,201 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FilePlus2, Sparkles, FileText, ScrollText, Presentation } from "lucide-react";
+import {
+  FileText,
+  Presentation,
+  LayoutGrid,
+  FileSignature,
+  Megaphone,
+  MonitorPlay,
+  ArrowRight,
+  Building2,
+  Palette,
+  Check,
+} from "lucide-react";
+
+// ---- Template catalogue ------------------------------------------------
+const TEMPLATES = [
+  {
+    id: "business-proposal",
+    title: "Business Proposal",
+    desc: "Create persuasive proposals faster.",
+    icon: FileText,
+    sections: ["Executive summary", "Scope of work", "Pricing", "Timeline"],
+  },
+  {
+    id: "pitch-deck",
+    title: "Pitch Deck",
+    desc: "Turn your business idea into an investor-ready presentation.",
+    icon: Presentation,
+    sections: ["Problem", "Solution", "Market", "Traction", "Ask"],
+  },
+  {
+    id: "sop",
+    title: "SOP",
+    desc: "Document your processes consistently.",
+    icon: LayoutGrid,
+    sections: ["Purpose", "Roles", "Steps", "Approval"],
+  },
+  {
+    id: "contract",
+    title: "Contract",
+    desc: "Generate professionally structured business agreements.",
+    icon: FileSignature,
+    sections: ["Parties", "Scope", "Terms", "Signatures"],
+  },
+  {
+    id: "marketing-plan",
+    title: "Marketing Plan",
+    desc: "Turn your marketing strategy into a structured plan.",
+    icon: Megaphone,
+    sections: ["Objectives", "Audience", "Channels", "Budget"],
+  },
+  {
+    id: "presentation",
+    title: "Presentation",
+    desc: "Turn business information into polished presentation.",
+    icon: MonitorPlay,
+    sections: ["Storyline", "Content", "Visuals", "Insight"],
+  },
+];
 
 const CreateDocument = () => {
   const navigate = useNavigate();
+  const [selectedId, setSelectedId] = useState(null);
 
-  const templates = [
-    { title: "Business Proposal", desc: "Craft winning client proposals with automated pricing.", icon: FileText },
-    { title: "Contract Agreement", desc: "Legally sound agreement templates tailored to your firm.", icon: ScrollText },
-    { title: "Pitch Deck", desc: "Present your company to investors with high-impact slides.", icon: Presentation },
-  ];
+  const selected = TEMPLATES.find((t) => t.id === selectedId);
+
+  const handleContinue = () => {
+    if (!selected) return;
+    navigate(`/dashboard/create-document/${selected.id}`);
+  };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto pb-24 sm:pb-0">
+      {/* Header */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs">
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Create Document</h2>
+        <p className="text-xs font-bold text-blue-600 mb-1">
+          Pick a generator to start a new business document.
+        </p>
+        <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+          What are you building today?
+        </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Select a template or generate with AI using your business profile context.
+          Choose a document type and we'll help you turn your business context
+          into a professional document
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {templates.map((tpl) => {
+      {/* Context bar */}
+      <div className="bg-white px-5 sm:px-6 py-4 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <p className="text-xs sm:text-sm text-slate-500">
+          Ahiia will use your Company Profile and Brand Kit to help personalize
+          this document.
+        </p>
+        <div className="flex items-center gap-4 shrink-0">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
+            <Building2 className="w-3.5 h-3.5 text-blue-500" />
+            SolarTech Nigeria
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
+            <Palette className="w-3.5 h-3.5 text-blue-500" />
+            Brand Kit applied
+          </span>
+        </div>
+      </div>
+
+      {/* Template grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        {TEMPLATES.map((tpl) => {
           const Icon = tpl.icon;
+          const isSelected = tpl.id === selectedId;
           return (
-            <div
-              key={tpl.title}
-              className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            <button
+              key={tpl.id}
+              type="button"
+              onClick={() => setSelectedId(tpl.id)}
+              aria-pressed={isSelected}
+              className={`relative text-left bg-white rounded-3xl p-5 sm:p-6 border shadow-xs transition-all duration-150 cursor-pointer group ${
+                isSelected
+                  ? "border-[#131B4D] ring-2 ring-[#131B4D]/15 shadow-md"
+                  : "border-slate-200/80 hover:border-slate-300 hover:shadow-md"
+              }`}
             >
-              <div>
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 group-hover:bg-[#131B4D] group-hover:text-white flex items-center justify-center transition-colors mb-4">
-                  <Icon className="w-6 h-6" />
-                </div>
-                <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-900 transition-colors">
-                  {tpl.title}
-                </h3>
-                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                  {tpl.desc}
-                </p>
+              {/* Selection indicator */}
+              <span
+                className={`absolute top-5 right-5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  isSelected
+                    ? "bg-[#131B4D] border-[#131B4D]"
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                {isSelected && (
+                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                )}
+              </span>
+
+              <div
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
+                  isSelected
+                    ? "bg-[#131B4D] text-white"
+                    : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
+                }`}
+              >
+                <Icon className="w-5 h-5" />
               </div>
 
-              <button
-                type="button"
-                className="mt-6 w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 group-hover:bg-[#131B4D] group-hover:text-white group-hover:border-transparent transition-colors"
-              >
-                Use Template
-              </button>
-            </div>
+              <h3 className="text-base font-bold text-slate-900 pr-6">
+                {tpl.title}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed pr-6">
+                {tpl.desc}
+              </p>
+
+              <div className="mt-4 pt-3 border-t border-slate-100">
+                <p className="text-[11px] font-bold text-slate-400 mb-2">
+                  Sections
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {tpl.sections.map((s) => (
+                    <span
+                      key={s}
+                      className="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 text-[11px] font-medium"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </button>
           );
         })}
+      </div>
+
+      {/* Footer / continue bar */}
+      <div className="fixed sm:sticky bottom-0 left-0 sm:left-auto right-0 sm:right-auto sm:bottom-2 z-10 bg-white sm:rounded-3xl border-t sm:border border-slate-200/80 shadow-[0_-4px_16px_rgba(15,23,42,0.06)] sm:shadow-xs px-5 sm:px-6 py-4 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold text-slate-400">Selected</p>
+          <p
+            className={`text-sm font-black truncate transition-colors ${
+              selected ? "text-slate-900" : "text-slate-400"
+            }`}
+          >
+            {selected ? selected.title : "No document type selected"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleContinue}
+          disabled={!selected}
+          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm shrink-0 transition-all ${
+            selected
+              ? "bg-[#131B4D] hover:bg-[#1B2666] text-white active:scale-[0.98] cursor-pointer"
+              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+          }`}
+        >
+          Continue
+          <ArrowRight className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import Landing from "./landing/Landing";
 import ScrollToTop from "./ScrollToTop";
 import Home from "./landing/pages/Home";
@@ -17,7 +17,10 @@ import CreateDocument from "./dashboard/userDashboard/CreateDocument";
 import Analytics from "./dashboard/userDashboard/Analytics";
 import CompanyProfile from "./dashboard/userDashboard/CompanyProfile";
 import BrandKit from "./dashboard/userDashboard/BrandKit";
-import Settings from "./dashboard/userDashboard/Settings";
+import SettingsLanding from "./dashboard/userDashboard/settings/SettingsLanding";
+import AccountSettings from "./dashboard/userDashboard/settings/AccountSettings";
+import SecuritySettings from "./dashboard/userDashboard/settings/SecuritySettings";
+import NotificationSettings from "./dashboard/userDashboard/settings/NotificationSettings";
 import Help from "./dashboard/userDashboard/Help";
 import AdminOverview from "./dashboard/adminDashboard/AdminOverview";
 import { ToastContainer } from "react-toastify";
@@ -44,7 +47,15 @@ const App = () => {
           <Route path="analytics" element={<Analytics />} />
           <Route path="company-profile" element={<CompanyProfile />} />
           <Route path="brand-kit" element={<BrandKit />} />
-          <Route path="settings" element={<Settings />} />
+
+          {/* Settings — landing holds the tab navlinks, children render in its Outlet */}
+          <Route path="settings" element={<SettingsLanding />}>
+            <Route index element={<Navigate to="account" replace />} />
+            <Route path="account" element={<AccountSettings />} />
+            <Route path="security" element={<SecuritySettings />} />
+            <Route path="notifications" element={<NotificationSettings />} />
+          </Route>
+
           <Route path="help" element={<Help />} />
         </Route>
 
