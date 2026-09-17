@@ -41,7 +41,7 @@ const BY_GENERATOR = [
   { label: "SOP", count: 4, pct: 17, icon: LayoutGrid },
   { label: "Contract", count: 3, pct: 13, icon: FileSignature },
   { label: "Pitch Deck", count: 2, pct: 8, icon: Presentation },
-  { label: "Presentation", count: 2, pct: 8, icon: MonitorPlay },
+  { label: "Business Plan", count: 2, pct: 8, icon: MonitorPlay },
 ];
 
 const TOTAL_DOCUMENTS = 24;

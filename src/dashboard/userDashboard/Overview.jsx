@@ -68,7 +68,7 @@ const INITIAL_DOCUMENTS = [
   },
   {
     id: "doc-6",
-    title: "Ridgepoint Presentation",
+    title: "Ridgepoint Business Plan",
     type: "Presentation",
     revisions: 3,
     status: "Draft",
