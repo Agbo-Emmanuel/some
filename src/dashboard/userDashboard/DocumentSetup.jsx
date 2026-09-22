@@ -5,7 +5,7 @@ import { getTemplate } from "../../config/documentTemplates";
 import SetupFooter from "../components/document-setup/SetupFooter";
 import OptionalInformation from "../components/document-setup/OptionalInformation";
 import GenerateModal from "../components/document-setup/GenerateModal";
-import SetupSidebar from "../components/document-setup/SetupSideBar";
+import SetupSidebar from "../components/document-setup/SetupSidebar";
 import { FORM_REGISTRY } from "../components/document-setup/FormRegistery";
 
 const DocumentSetup = () => {
