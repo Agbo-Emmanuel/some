@@ -1,63 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  FileText,
-  Presentation,
-  LayoutGrid,
-  FileSignature,
-  Megaphone,
-  MonitorPlay,
-  ArrowRight,
-  Building2,
-  Palette,
-  Check,
-} from "lucide-react";
-
-// ---- Template catalogue ------------------------------------------------
-const TEMPLATES = [
-  {
-    id: "business-proposal",
-    title: "Business Proposal",
-    desc: "Create persuasive proposals faster.",
-    icon: FileText,
-    sections: ["Executive summary", "Scope of work", "Pricing", "Timeline"],
-  },
-  {
-    id: "pitch-deck",
-    title: "Pitch Deck",
-    desc: "Turn your business idea into an investor-ready presentation.",
-    icon: Presentation,
-    sections: ["Problem", "Solution", "Market", "Traction", "Ask"],
-  },
-  {
-    id: "sop",
-    title: "SOP",
-    desc: "Document your processes consistently.",
-    icon: LayoutGrid,
-    sections: ["Purpose", "Roles", "Steps", "Approval"],
-  },
-  {
-    id: "contract",
-    title: "Contract",
-    desc: "Generate professionally structured business agreements.",
-    icon: FileSignature,
-    sections: ["Parties", "Scope", "Terms", "Signatures"],
-  },
-  {
-    id: "marketing-plan",
-    title: "Marketing Plan",
-    desc: "Turn your marketing strategy into a structured plan.",
-    icon: Megaphone,
-    sections: ["Objectives", "Audience", "Channels", "Budget"],
-  },
-  {
-    id: "presentation",
-    title: "Presentation",
-    desc: "Turn business information into polished presentation.",
-    icon: MonitorPlay,
-    sections: ["Storyline", "Content", "Visuals", "Insight"],
-  },
-];
+import { ArrowRight, Building2, Palette, Check } from "lucide-react";
+import { TEMPLATES } from "../../config/documentTemplates";
 
 const CreateDocument = () => {
   const navigate = useNavigate();
@@ -71,7 +15,7 @@ const CreateDocument = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-24 sm:pb-0">
+    <div className="space-y-5 max-w-6xl mx-auto pb-24 sm:pb-0">
       {/* Header */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs">
         <p className="text-xs font-bold text-blue-600 mb-1">
@@ -152,19 +96,12 @@ const CreateDocument = () => {
               </p>
 
               <div className="mt-4 pt-3 border-t border-slate-100">
-                <p className="text-[11px] font-bold text-slate-400 mb-2">
-                  Sections
+                <p className="text-[11px] font-bold text-slate-400 mb-1">
+                  Input
                 </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {tpl.sections.map((s) => (
-                    <span
-                      key={s}
-                      className="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 text-[11px] font-medium"
-                    >
-                      {s}
-                    </span>
-                  ))}
-                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {tpl.inputSummary}
+                </p>
               </div>
             </button>
           );

@@ -19,4 +19,12 @@ export const ENDPOINTS = {
   //Brand-kit
   GET_BRAND_KIT: "/api/v1/brand-kit",
   UPDATE_BRAND_KIT: "/api/v1/brand-kit",
+
+  //Documents
+  GET_DOCUMENTS: "/api/v1/documents",
+  CREATE_DOCUMENT: "/api/v1/documents",
+  GET_ONE_DOCUMENT: (id) => `/api/v1/documents/${id}`,
+  GET_DOCUMENT_GUIDANCE: (id) => `/api/v1/documents/${id}/guidance`,
+  UPDATE_DOCUMENT_GUIDANCE: (id, flagId) =>
+    `/api/v1/documents/${id}/guidance/${flagId}`,
 };

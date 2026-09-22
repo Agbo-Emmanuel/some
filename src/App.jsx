@@ -24,6 +24,7 @@ import NotificationSettings from "./dashboard/userDashboard/settings/Notificatio
 import Help from "./dashboard/userDashboard/Help";
 import AdminOverview from "./dashboard/adminDashboard/AdminOverview";
 import { ToastContainer } from "react-toastify";
+import DocumentSetup from "./dashboard/userDashboard/DocumentSetup";
 
 const App = () => {
   return (
@@ -44,6 +45,10 @@ const App = () => {
           <Route path="overview" element={<Overview />} />
           <Route path="documents" element={<Documents />} />
           <Route path="create-document" element={<CreateDocument />} />
+          <Route
+            path="create-document/:templateId"
+            element={<DocumentSetup />}
+          />
           <Route path="analytics" element={<Analytics />} />
           <Route path="company-profile" element={<CompanyProfile />} />
           <Route path="brand-kit" element={<BrandKit />} />
