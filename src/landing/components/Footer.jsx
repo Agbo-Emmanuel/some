@@ -1,15 +1,16 @@
 import React from "react";
 import { HiSparkles } from "react-icons/hi2";
-import { FiTwitter, FiLinkedin, FiInstagram } from "react-icons/fi";
+import { FiLinkedin, FiInstagram, FiFacebook } from "react-icons/fi";
 import { NAV_LINKS } from "./Header";
 import { scrollToSection } from "../../utils/scrollToSection";
 import logo from "../../assets/ahiia_icon.svg";
 import { FaXTwitter } from "react-icons/fa6";
 
 const socials = [
-  { icon: FaXTwitter, label: "Twitter" },
-  { icon: FiLinkedin, label: "LinkedIn" },
-  { icon: FiInstagram, label: "Instagram" },
+  { icon: FaXTwitter, label: "X", href: "https://x.com/AHIIAAI?t=YJlgXjD2xRS0IjyjgGYjBQ&s=09" },
+  { icon: FiLinkedin, label: "LinkedIn", href: "https://linkedin.com/company/your_company" },
+  { icon: FiInstagram, label: "Instagram", href: "https://www.instagram.com/ahiia.ai?cplk=MTh3NzBhNHhtN3ZuNw==" },
+  { icon: FiFacebook, label: "Facebook", href: " https://www.facebook.com/share/19i4aWDucA/" },
 ];
 
 const Footer = () => {
@@ -49,10 +50,12 @@ const Footer = () => {
 
           {/* socials */}
           <div className="flex items-center gap-3">
-            {socials.map(({ icon: Icon, label }) => (
+            {socials.map(({ icon: Icon, label, href }) => (
               <a
                 key={label}
-                href="#"
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label={label}
                 className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-all duration-200 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
               >
