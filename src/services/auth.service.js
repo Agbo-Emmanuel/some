@@ -21,6 +21,11 @@ export const login = async (payload) => {
   return response.data;
 };
 
+export const googleAuth = async (payload) => {
+  const response = await api.post(ENDPOINTS.GOOGLE_AUTH, payload);
+  return response.data;
+};
+
 export const logout = async (clearCookies) => {
   try {
     await api.post(ENDPOINTS.LOGOUT);
