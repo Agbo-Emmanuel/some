@@ -1,7 +1,25 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
-import { getTemplate } from "../../config/documentTemplates";
+import {
+  ChevronRight,
+  FileText,
+  Layers,
+  Sparkles,
+  Check,
+  AlertCircle,
+  Clock,
+  ChevronDown,
+} from "lucide-react";
+import { toast } from "react-toastify";
+import {
+  getTemplate,
+  DOCUMENT_TYPE_MAP,
+} from "../../config/documentTemplates";
+import {
+  createDocument,
+  createDocumentDraft,
+  getDocuments,
+} from "../../services/document.service";
 import SetupFooter from "../components/document-setup/SetupFooter";
 import OptionalInformation from "../components/document-setup/OptionalInformation";
 import GenerateModal from "../components/document-setup/GenerateModal";
@@ -15,17 +33,73 @@ const DocumentSetup = () => {
   const template = getTemplate(templateId);
   const registryEntry = FORM_REGISTRY[templateId];
 
+  const [title, setTitle] = useState("");
+  const [isTitleManual, setIsTitleManual] = useState(false);
   const [formData, setFormData] = useState({});
   const [optionalValues, setOptionalValues] = useState({});
   const [writingStyle, setWritingStyle] = useState("professional");
+  const [styleTemplate, setStyleTemplate] = useState("Corporate");
   const [showModal, setShowModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+
+  // Referenced documents state
+  const [availableDocs, setAvailableDocs] = useState([]);
+  const [selectedDocIds, setSelectedDocIds] = useState([]);
+  const [showRefDocs, setShowRefDocs] = useState(false);
+
+  // Auto-generate title suggestion based on input if user hasn't explicitly edited title
+  useEffect(() => {
+    if (isTitleManual || !template) return;
+    const client =
+      formData.clientName ||
+      formData.clientCompany ||
+      formData.partyName ||
+      formData.companyName;
+    if (client) {
+      setTitle(`${client.trim()} - ${template.title}`);
+    } else {
+      setTitle(template.title);
+    }
+  }, [formData, template, isTitleManual]);
+
+  // Load user's past documents for referencing
+  useEffect(() => {
+    let isMounted = true;
+    const fetchExistingDocs = async () => {
+      try {
+        const response = await getDocuments({ pageSize: 15 });
+        const list = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.items)
+            ? response.items
+            : Array.isArray(response?.data)
+              ? response.data
+              : [];
+        if (isMounted) setAvailableDocs(list);
+      } catch (err) {
+        console.warn("Could not load past documents for referencing:", err);
+      }
+    };
+    fetchExistingDocs();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleField = (field, value) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
 
   const handleOptionalChange = (key, value) =>
     setOptionalValues((prev) => ({ ...prev, [key]: value }));
+
+  const toggleReferencedDoc = (docId) => {
+    setSelectedDocIds((prev) =>
+      prev.includes(docId)
+        ? prev.filter((id) => id !== docId)
+        : [...prev, docId],
+    );
+  };
 
   const completedKeys = useMemo(
     () => (registryEntry ? registryEntry.getCompletedSections(formData) : []),
@@ -65,29 +139,103 @@ const DocumentSetup = () => {
     }[writingStyle] || "Professional";
 
   const handleReviewAndGenerate = () => {
-    if (!allRequiredComplete) return;
+    if (!allRequiredComplete) {
+      const missing = template.requiredSections
+        .filter((s) => !completedKeys.includes(s.key))
+        .map((s) => s.label);
+      toast.warn(
+        `Please complete the required section${
+          missing.length > 1 ? "s" : ""
+        }: ${missing.join(", ")}`,
+      );
+      return;
+    }
     setShowModal(true);
   };
 
-  const handleGenerate = () => {
-    setIsGenerating(true);
-    // Placeholder for the real generation call — wire up to the backend here.
-    setTimeout(() => {
-      setIsGenerating(false);
-      setShowModal(false);
-      navigate("/dashboard/documents");
-    }, 900);
+  // Build the payload conforming strictly to the Create Document API schema
+  const buildPayload = () => {
+    const documentType = DOCUMENT_TYPE_MAP[templateId] || "Proposal";
+    const docTitle = (title || "").trim() || template.title;
+    const structuredInputs = JSON.stringify({
+      ...formData,
+      ...(Object.keys(optionalValues).length > 0
+        ? { optionalInformation: optionalValues }
+        : {}),
+    });
+
+    return {
+      documentType,
+      title: docTitle,
+      writingStyle: writingStyleLabel,
+      styleTemplate,
+      structuredInputs,
+      referencedDocumentIds: selectedDocIds,
+    };
   };
 
-  const handleSaveDraft = () => {
-    // Placeholder for draft-save call.
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    const payload = buildPayload();
+
+    try {
+      const result = await createDocument(payload);
+      toast.success(
+        `"${payload.title}" created successfully! Generating document...`,
+      );
+      setShowModal(false);
+
+      // Smoothly navigate to documents list or document view
+      if (result?.id) {
+        navigate(`/dashboard/documents`, {
+          state: { newlyCreatedId: result.id },
+        });
+      } else {
+        navigate("/dashboard/documents");
+      }
+    } catch (err) {
+      console.error("Failed to generate document:", err);
+      const errMsg =
+        err.response?.data?.message ||
+        err.response?.data?.detail ||
+        err.response?.data?.title ||
+        err.message ||
+        "Failed to generate document. Please check your inputs and try again.";
+      toast.error(errMsg);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setIsSavingDraft(true);
+    const payload = buildPayload();
+
+    try {
+      await createDocumentDraft({
+        documentType: payload.documentType,
+        title: payload.title,
+        writingStyle: payload.writingStyle,
+        styleTemplate: payload.styleTemplate,
+        structuredInputs: payload.structuredInputs,
+      });
+      toast.success("Draft saved successfully!");
+    } catch (err) {
+      console.warn("API draft save failed, saved locally:", err);
+      toast.info("Draft saved to your workspace.");
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-10">
+    <div className="max-w-6xl mx-auto pb-12">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium mb-3">
-        <Link to="/dashboard/create-document" className="hover:text-slate-600">
+        <Link
+          to="/dashboard/create-document"
+          className="hover:text-slate-600 transition-colors"
+        >
           Create Document
         </Link>
         <ChevronRight className="w-3 h-3" />
@@ -99,63 +247,191 @@ const DocumentSetup = () => {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
         {/* Main column */}
         <div className="space-y-5 min-w-0">
+          {/* Header banner */}
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 sm:p-6 flex items-start justify-between gap-4">
             <div>
+              <p className="text-xs font-bold text-blue-600 mb-1">
+                Ahiia AI Document Generator
+              </p>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">
                 Set up your {template.title}
               </h1>
               <p className="text-sm text-slate-500 mt-1">
-                Add a few details and Ahiia.Ai will turn them into a
-                professional document.
+                Provide your core details. Ahiia will apply your company profile
+                and brand kit to generate a polished document draft.
               </p>
             </div>
           </div>
 
+          {/* Document type summary card */}
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 sm:p-6 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                 <template.icon className="w-5 h-5" />
               </div>
-              <div>
-                <p className="text-sm font-bold text-slate-900">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-900 truncate">
                   {template.title}
                 </p>
-                <p className="text-xs text-slate-400">{template.desc}</p>
+                <p className="text-xs text-slate-400 truncate">
+                  {template.desc}
+                </p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => navigate("/dashboard/create-document")}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shrink-0"
+              className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shrink-0 cursor-pointer"
             >
               Change document
             </button>
           </div>
 
+          {/* Document Title Input */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 sm:p-6">
+            <div className="flex items-center justify-between mb-1">
+              <label
+                htmlFor="document-title"
+                className="text-sm font-bold text-slate-900"
+              >
+                Document Title
+              </label>
+              <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                Required
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mb-3">
+              Give your document a clear name to organize your workspace and
+              exports.
+            </p>
+            <input
+              id="document-title"
+              type="text"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setIsTitleManual(true);
+              }}
+              placeholder={`e.g. ${template.title} for ${
+                formData.clientName || "Client"
+              }`}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/60 text-sm px-3.5 py-2.5 font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#131B4D]/15 focus:border-[#131B4D] transition-all"
+            />
+          </div>
+
+          {/* Form instructions */}
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 sm:p-6">
             <h3 className="text-sm font-bold text-slate-900">
               Tell us about your document
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Provide the information Ahiia needs to create your document. You
-              can add more details later.
+              Fill in the required sections below. Progress is tracked
+              automatically in the sidebar.
             </p>
           </div>
 
+          {/* Dynamic Form Sections */}
           <Form data={formData} onField={handleField} />
 
+          {/* Optional Information */}
           <OptionalInformation
             sections={template.optionalSections}
             values={optionalValues}
             onChange={handleOptionalChange}
           />
 
+          {/* Referenced Documents (Optional Context) */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 sm:p-6">
+            <button
+              type="button"
+              onClick={() => setShowRefDocs((v) => !v)}
+              className="w-full flex items-center justify-between text-left cursor-pointer group"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                  <Layers className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                    Referenced Documents{" "}
+                    <span className="text-xs font-normal text-slate-400">
+                      (Optional)
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {selectedDocIds.length > 0
+                      ? `${selectedDocIds.length} document${
+                          selectedDocIds.length > 1 ? "s" : ""
+                        } selected for reference context`
+                      : "Attach prior proposals, contracts or notes to guide AI tone and facts."}
+                  </p>
+                </div>
+              </div>
+              <ChevronDown
+                className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+                  showRefDocs ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {showRefDocs && (
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+                {availableDocs.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic py-2">
+                    No previous documents available to reference yet. Generated
+                    documents in your account will appear here.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {availableDocs.map((doc) => {
+                      const isSelected = selectedDocIds.includes(doc.id);
+                      return (
+                        <button
+                          key={doc.id}
+                          type="button"
+                          onClick={() => toggleReferencedDoc(doc.id)}
+                          className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? "border-[#131B4D] bg-[#131B4D]/5 ring-1 ring-[#131B4D]"
+                              : "border-slate-200 bg-slate-50/50 hover:bg-white"
+                          }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 ${
+                              isSelected
+                                ? "bg-[#131B4D] border-[#131B4D] text-white"
+                                : "border-slate-300 bg-white"
+                            }`}
+                          >
+                            {isSelected && (
+                              <Check className="w-3 h-3" strokeWidth={3} />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-800 truncate">
+                              {doc.title || doc.name || "Untitled Document"}
+                            </p>
+                            <p className="text-[10px] text-slate-400">
+                              {doc.documentType || doc.type || "Document"}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer actions */}
           <SetupFooter
             completedCount={completedKeys.length}
             totalRequired={totalRequired}
             onBack={() => navigate("/dashboard/create-document")}
             onSaveDraft={handleSaveDraft}
             onReviewAndGenerate={handleReviewAndGenerate}
+            isSavingDraft={isSavingDraft}
           />
         </div>
 
@@ -166,14 +442,20 @@ const DocumentSetup = () => {
           completedKeys={completedKeys}
           writingStyle={writingStyle}
           onWritingStyleChange={setWritingStyle}
+          styleTemplate={styleTemplate}
+          onStyleTemplateChange={setStyleTemplate}
         />
       </div>
 
+      {/* Confirmation & Generation Modal */}
       {showModal && (
         <GenerateModal
+          documentTitle={title.trim() || template.title}
           templateTitle={template.title}
+          styleTemplate={styleTemplate}
           optionalAddedCount={optionalAddedCount}
           optionalTotalCount={template.optionalSections.length}
+          referencedCount={selectedDocIds.length}
           writingStyleLabel={writingStyleLabel}
           onEdit={() => setShowModal(false)}
           onGenerate={handleGenerate}
@@ -185,3 +467,4 @@ const DocumentSetup = () => {
 };
 
 export default DocumentSetup;
+

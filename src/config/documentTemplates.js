@@ -165,3 +165,36 @@ export const WRITING_STYLES = [
   { id: "clear-simple", label: "Clear & Simple" },
   { id: "persuasive", label: "Persuasive" },
 ];
+
+export const STYLE_TEMPLATES = [
+  {
+    id: "Corporate",
+    label: "Corporate",
+    tag: "Recommended",
+    desc: "Executive tone, structured tables, formal headings",
+  },
+  {
+    id: "Minimal",
+    label: "Minimal",
+    desc: "Clean typography, light dividers, condensed spacing",
+  },
+  {
+    id: "Creative",
+    label: "Creative",
+    desc: "Bold accent badges, modern section blocks, high contrast",
+  },
+];
+
+export const DOCUMENT_TYPE_MAP = {
+  "business-proposal": "Proposal",
+  proposal: "Proposal",
+  "pitch-deck": "PitchDeck",
+  pitchdeck: "PitchDeck",
+  sop: "SOP",
+  contract: "Contract",
+  "marketing-plan": "MarketingPlan",
+  marketingplan: "MarketingPlan",
+  "business-plan": "BusinessPlan",
+  businessplan: "BusinessPlan",
+};
+

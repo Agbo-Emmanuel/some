@@ -1,4 +1,17 @@
-# React + Vite
+# Ahiia.AI — Frontend
+
+> 📘 **[ARCHITECTURE.md](./ARCHITECTURE.md)** is the definitive knowledge-transfer
+> document for this repository: architecture, the full event system, request/data
+> flow, state, persistence, integrations, configuration, security, error handling,
+> observability, business rules, design history, known limitations, a debugging
+> playbook, and AI-agent guidance.
+>
+> **Read that file first** if you are an AI agent or a new engineer — it will tell
+> you what actually works, what is mocked, and what is broken.
+
+---
+
+## React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

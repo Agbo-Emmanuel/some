@@ -13,6 +13,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { getBlueprints } from "../../services/document.service";
+import { TEMPLATES } from "../../config/documentTemplates";
 
 // ---------------------------------------------------------------------------
 // Icon lookup by slug – the API doesn't return icons so we map them locally.
@@ -54,19 +55,28 @@ const CreateDocument = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await getBlueprints();
-        // Support both a direct array response or { data: [...] } shaped responses.
-        const list = Array.isArray(response)
-          ? response
-          : Array.isArray(response?.data)
-            ? response.data
-            : [];
-        setBlueprints(list);
+        const fallbackList = TEMPLATES.map((t) => ({
+          slug: t.id,
+          label: t.title,
+          description: t.desc,
+          inputs: t.requiredSections.map((s) => ({ label: s.label })),
+        }));
+
+        try {
+          const response = await getBlueprints();
+          const list = Array.isArray(response)
+            ? response
+            : Array.isArray(response?.data)
+              ? response.data
+              : [];
+          setBlueprints(list.length > 0 ? list : fallbackList);
+        } catch {
+          // If the blueprints endpoint fails or requires seeding, gracefully fall back
+          setBlueprints(fallbackList);
+        }
       } catch (err) {
         console.error(err);
-        err.message
-          ? setError(err.message)
-          : setError("Failed to load document types. Please try again.");
+        setError("Failed to load document types. Please try again.");
       } finally {
         setLoading(false);
       }
