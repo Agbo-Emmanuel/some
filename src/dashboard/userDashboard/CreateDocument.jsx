@@ -1,17 +1,83 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Building2, Palette, Check } from "lucide-react";
-import { TEMPLATES } from "../../config/documentTemplates";
+import {
+  ArrowRight,
+  Building2,
+  Palette,
+  Check,
+  FileText,
+  Briefcase,
+  LayoutGrid,
+  FileSignature,
+  Megaphone,
+  ClipboardList,
+} from "lucide-react";
+import { getBlueprints } from "../../services/document.service";
+
+// ---------------------------------------------------------------------------
+// Icon lookup by slug – the API doesn't return icons so we map them locally.
+// ---------------------------------------------------------------------------
+const ICON_MAP = {
+  "business-proposal": FileText,
+  "pitch-deck": Briefcase,
+  sop: LayoutGrid,
+  contract: FileSignature,
+  "marketing-plan": Megaphone,
+  "business-plan": ClipboardList,
+};
+
+// Build a human-readable comma-separated summary from the inputs array.
+const buildInputSummary = (inputs = []) =>
+  inputs.map((i) => i.label).join(", ");
+
+// Skeleton card shown while loading.
+const SkeletonCard = () => (
+  <div className="relative bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs animate-pulse">
+    <div className="w-11 h-11 rounded-2xl bg-slate-100 mb-4" />
+    <div className="h-4 w-2/3 bg-slate-100 rounded-full mb-2" />
+    <div className="h-3 w-full bg-slate-100 rounded-full mb-1" />
+    <div className="h-3 w-4/5 bg-slate-100 rounded-full mt-4" />
+  </div>
+);
 
 const CreateDocument = () => {
   const navigate = useNavigate();
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedSlug, setSelectedSlug] = useState(null);
+  const [blueprints, setBlueprints] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const selected = TEMPLATES.find((t) => t.id === selectedId);
+  const selected = blueprints.find((b) => b.slug === selectedSlug);
+
+  useEffect(() => {
+    const fetchBlueprints = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await getBlueprints();
+        // Support both a direct array response or { data: [...] } shaped responses.
+        const list = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.data)
+            ? response.data
+            : [];
+        setBlueprints(list);
+      } catch (err) {
+        console.error(err);
+        err.message
+          ? setError(err.message)
+          : setError("Failed to load document types. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlueprints();
+  }, []);
 
   const handleContinue = () => {
     if (!selected) return;
-    navigate(`/dashboard/create-document/${selected.id}`);
+    navigate(`/dashboard/create-document/${selected.slug}`);
   };
 
   return (
@@ -48,64 +114,79 @@ const CreateDocument = () => {
         </div>
       </div>
 
+      {/* Error state */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 text-sm text-red-600 font-medium">
+          {error}
+        </div>
+      )}
+
       {/* Template grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-        {TEMPLATES.map((tpl) => {
-          const Icon = tpl.icon;
-          const isSelected = tpl.id === selectedId;
-          return (
-            <button
-              key={tpl.id}
-              type="button"
-              onClick={() => setSelectedId(tpl.id)}
-              aria-pressed={isSelected}
-              className={`relative text-left bg-white rounded-3xl p-5 sm:p-6 border shadow-xs transition-all duration-150 cursor-pointer group ${
-                isSelected
-                  ? "border-[#131B4D] ring-2 ring-[#131B4D]/15 shadow-md"
-                  : "border-slate-200/80 hover:border-slate-300 hover:shadow-md"
-              }`}
-            >
-              {/* Selection indicator */}
-              <span
-                className={`absolute top-5 right-5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                  isSelected
-                    ? "bg-[#131B4D] border-[#131B4D]"
-                    : "border-slate-200 bg-white"
-                }`}
-              >
-                {isSelected && (
-                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                )}
-              </span>
+        {loading
+          ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+          : blueprints.map((blueprint) => {
+              const Icon = ICON_MAP[blueprint.slug] ?? FileText;
+              const isSelected = blueprint.slug === selectedSlug;
+              const inputSummary = buildInputSummary(blueprint.inputs);
 
-              <div
-                className={`w-11 h-11 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
-                  isSelected
-                    ? "bg-[#131B4D] text-white"
-                    : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-              </div>
+              return (
+                <button
+                  key={blueprint.slug}
+                  type="button"
+                  onClick={() => setSelectedSlug(blueprint.slug)}
+                  aria-pressed={isSelected}
+                  className={`relative text-left bg-white rounded-3xl p-5 sm:p-6 border shadow-xs transition-all duration-150 cursor-pointer group ${
+                    isSelected
+                      ? "border-[#131B4D] ring-2 ring-[#131B4D]/15 shadow-md"
+                      : "border-slate-200/80 hover:border-slate-300 hover:shadow-md"
+                  }`}
+                >
+                  {/* Selection indicator */}
+                  <span
+                    className={`absolute top-5 right-5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                      isSelected
+                        ? "bg-[#131B4D] border-[#131B4D]"
+                        : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    {isSelected && (
+                      <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                    )}
+                  </span>
 
-              <h3 className="text-base font-bold text-slate-900 pr-6">
-                {tpl.title}
-              </h3>
-              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed pr-6">
-                {tpl.desc}
-              </p>
+                  {/* Icon */}
+                  <div
+                    className={`w-11 h-11 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
+                      isSelected
+                        ? "bg-[#131B4D] text-white"
+                        : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-100">
-                <p className="text-[11px] font-bold text-slate-400 mb-1">
-                  Input
-                </p>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  {tpl.inputSummary}
-                </p>
-              </div>
-            </button>
-          );
-        })}
+                  <h3 className="text-base font-bold text-slate-900 pr-6">
+                    {blueprint.label}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed pr-6">
+                    {blueprint.description}
+                  </p>
+
+                  {/* Input summary */}
+                  {inputSummary && (
+                    <div className="mt-4 pt-3 border-t border-slate-100">
+                      <p className="text-[11px] font-bold text-slate-400 mb-1">
+                        Input
+                      </p>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        {inputSummary}
+                      </p>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
       </div>
 
       {/* Footer / continue bar */}
@@ -117,7 +198,7 @@ const CreateDocument = () => {
               selected ? "text-slate-900" : "text-slate-400"
             }`}
           >
-            {selected ? selected.title : "No document type selected"}
+            {selected ? selected.label : "No document type selected"}
           </p>
         </div>
         <button
