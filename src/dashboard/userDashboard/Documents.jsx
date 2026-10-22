@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { getDocuments } from "../../services/document.service";
 import {
   FileText,
   FileSignature,
@@ -224,20 +225,63 @@ function RowMenu({ onOpen }) {
 // ---- Main page -------------------------------------------------------
 const Documents = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [documentsList, setDocumentsList] = useState(DOCUMENTS);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [sortBy, setSortBy] = useState("Recently updated");
 
+  useEffect(() => {
+    let isMounted = true;
+    const fetchDocs = async () => {
+      try {
+        const response = await getDocuments();
+        const apiItems = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.items)
+            ? response.items
+            : Array.isArray(response?.data)
+              ? response.data
+              : [];
+        if (isMounted && apiItems.length > 0) {
+          const formatted = apiItems.map((item) => ({
+            id: item.id,
+            name: item.title || "Untitled Document",
+            type:
+              item.documentType ||
+              item.documentTypeLabel ||
+              "Business Proposal",
+            revisions: item.revisionCount || 1,
+            status: item.status || "Draft",
+            updatedMinsAgo: 1,
+            icon: FileText,
+            tint: "bg-indigo-50 text-indigo-600",
+          }));
+          setDocumentsList([
+            ...formatted,
+            ...DOCUMENTS.filter((d) => !formatted.some((f) => f.id === d.id)),
+          ]);
+        }
+      } catch (err) {
+        console.warn("Could not fetch remote documents:", err);
+      }
+    };
+    fetchDocs();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const types = useMemo(
-    () => ["All", ...Array.from(new Set(DOCUMENTS.map((d) => d.type)))],
-    [],
+    () => ["All", ...Array.from(new Set(documentsList.map((d) => d.type)))],
+    [documentsList],
   );
   const statuses = ["All", "Draft", "Finalized", "Exported"];
   const sorts = ["Recently updated", "Name (A-Z)", "Most revisions"];
 
   const filtered = useMemo(() => {
-    let docs = DOCUMENTS.filter((d) => {
+    let docs = documentsList.filter((d) => {
       const matchesQuery = d.name.toLowerCase().includes(query.toLowerCase());
       const matchesType = typeFilter === "All" || d.type === typeFilter;
       const matchesStatus = statusFilter === "All" || d.status === statusFilter;
@@ -252,7 +296,7 @@ const Documents = () => {
       docs = [...docs].sort((a, b) => a.updatedMinsAgo - b.updatedMinsAgo);
     }
     return docs;
-  }, [query, typeFilter, statusFilter, sortBy]);
+  }, [documentsList, query, typeFilter, statusFilter, sortBy]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
