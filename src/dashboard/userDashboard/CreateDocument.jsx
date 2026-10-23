@@ -13,6 +13,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { getBlueprints } from "../../services/document.service";
+import { getUserProfile } from "../../services/profile.service";
 import { TEMPLATES } from "../../config/documentTemplates";
 
 // ---------------------------------------------------------------------------
@@ -47,8 +48,18 @@ const CreateDocument = () => {
   const [blueprints, setBlueprints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [companyName, setCompanyName] = useState("");
 
   const selected = blueprints.find((b) => b.slug === selectedSlug);
+
+  useEffect(() => {
+    getUserProfile()
+      .then((res) => {
+        const data = res?.companyName ? res : res?.data || res;
+        if (data?.companyName) setCompanyName(data.companyName);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const fetchBlueprints = async () => {
@@ -69,7 +80,30 @@ const CreateDocument = () => {
             : Array.isArray(response?.data)
               ? response.data
               : [];
-          setBlueprints(list.length > 0 ? list : fallbackList);
+          if (list.length > 0) {
+            const normalized = list.map((b) => {
+              const rawSlug =
+                b.slug || b.id || b.documentType || b.type || "";
+              const slug = rawSlug
+                ? rawSlug.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()
+                : "business-proposal";
+              return {
+                slug,
+                label: b.label || b.name || b.title || "Document",
+                description: b.description || b.desc || "",
+                inputs: Array.isArray(b.inputs)
+                  ? b.inputs
+                  : Array.isArray(b.requiredSections)
+                    ? b.requiredSections.map((s) => ({
+                        label: s.label || s,
+                      }))
+                    : [],
+              };
+            });
+            setBlueprints(normalized);
+          } else {
+            setBlueprints(fallbackList);
+          }
         } catch {
           // If the blueprints endpoint fails or requires seeding, gracefully fall back
           setBlueprints(fallbackList);
@@ -115,7 +149,7 @@ const CreateDocument = () => {
         <div className="flex items-center gap-4 shrink-0">
           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
             <Building2 className="w-3.5 h-3.5 text-blue-500" />
-            SolarTech Nigeria
+            {companyName || "lexis tech"}
           </span>
           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
             <Palette className="w-3.5 h-3.5 text-blue-500" />
@@ -145,6 +179,9 @@ const CreateDocument = () => {
                   key={blueprint.slug}
                   type="button"
                   onClick={() => setSelectedSlug(blueprint.slug)}
+                  onDoubleClick={() =>
+                    navigate(`/dashboard/create-document/${blueprint.slug}`)
+                  }
                   aria-pressed={isSelected}
                   className={`relative text-left bg-white rounded-3xl p-5 sm:p-6 border shadow-xs transition-all duration-150 cursor-pointer group ${
                     isSelected

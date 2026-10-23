@@ -20,7 +20,15 @@ export const FORM_REGISTRY = {
     Form: BusinessProposalForm,
     getCompletedSections: businessProposalCompleted,
   },
+  proposal: {
+    Form: BusinessProposalForm,
+    getCompletedSections: businessProposalCompleted,
+  },
   "pitch-deck": {
+    Form: PitchDeckForm,
+    getCompletedSections: pitchDeckCompleted,
+  },
+  pitchdeck: {
     Form: PitchDeckForm,
     getCompletedSections: pitchDeckCompleted,
   },
@@ -30,8 +38,23 @@ export const FORM_REGISTRY = {
     Form: MarketingPlanForm,
     getCompletedSections: marketingPlanCompleted,
   },
+  marketingplan: {
+    Form: MarketingPlanForm,
+    getCompletedSections: marketingPlanCompleted,
+  },
   "business-plan": {
     Form: BusinessPlanForm,
     getCompletedSections: businessPlanCompleted,
   },
+  businessplan: {
+    Form: BusinessPlanForm,
+    getCompletedSections: businessPlanCompleted,
+  },
+};
+
+export const getFormRegistryEntry = (id) => {
+  if (!id) return undefined;
+  if (FORM_REGISTRY[id]) return FORM_REGISTRY[id];
+  const normalized = String(id).toLowerCase().replace(/_/g, "-");
+  return FORM_REGISTRY[normalized];
 };

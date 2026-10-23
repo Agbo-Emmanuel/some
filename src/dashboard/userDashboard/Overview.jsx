@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FilePlus,
@@ -18,7 +18,10 @@ import {
   LayoutGrid,
   Layers,
   ExternalLink,
+  Building2,
 } from "lucide-react";
+import { getUserProfile } from "../../services/profile.service";
+import { getDocuments } from "../../services/document.service";
 
 const INITIAL_DOCUMENTS = [
   {
@@ -91,9 +94,76 @@ const Overview = () => {
   const [typeFilter, setTypeFilter] = useState("All types");
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [activeMenuDocId, setActiveMenuDocId] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [documentsList, setDocumentsList] = useState(INITIAL_DOCUMENTS);
+  const [totalDocsCount, setTotalDocsCount] = useState(0);
+
+  const fetchProfile = async () => {
+    try {
+      setLoadingProfile(true);
+      const response = await getUserProfile();
+      const data = response?.companyName
+        ? response
+        : response?.data || response;
+      if (data) {
+        setProfile(data);
+      }
+    } catch (error) {
+      console.log("Failed to load profile in Overview:", error);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const fetchOverviewDocuments = async () => {
+    try {
+      const response = await getDocuments();
+      const items = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.items)
+          ? response.items
+          : Array.isArray(response?.data)
+            ? response.data
+            : [];
+
+      if (items.length > 0) {
+        const formatted = items.map((doc) => ({
+          id: doc.id,
+          title: doc.title || "Untitled Document",
+          type: doc.documentTypeLabel || doc.documentType || "Business Proposal",
+          revisions: doc.revisionCount ?? 1,
+          status: doc.status || "Draft",
+          icon: FileText,
+          tint: "bg-indigo-50 text-indigo-600",
+        }));
+        setDocumentsList(formatted);
+        setTotalDocsCount(response.totalCount ?? items.length);
+      }
+    } catch (err) {
+      console.warn("Could not load documents for overview:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+    fetchOverviewDocuments();
+
+    const handleProfileUpdated = (event) => {
+      if (event?.detail) {
+        setProfile(event.detail);
+      } else {
+        fetchProfile();
+      }
+    };
+    window.addEventListener("ahiia:profile-updated", handleProfileUpdated);
+    return () => {
+      window.removeEventListener("ahiia:profile-updated", handleProfileUpdated);
+    };
+  }, []);
 
   // Filter documents
-  const filteredDocuments = INITIAL_DOCUMENTS.filter((doc) => {
+  const filteredDocuments = documentsList.filter((doc) => {
     const matchesType =
       typeFilter === "All types" || doc.type === typeFilter;
     const matchesStatus =
@@ -130,11 +200,19 @@ const Overview = () => {
       {/* 1. Workspace Hero Banner */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/70 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1.5 max-w-2xl">
-          <span className="text-xs font-bold text-indigo-600 tracking-wider">
-            Workspace
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-indigo-600 tracking-wider uppercase">
+              Workspace
+            </span>
+            {profile?.companyName && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100/80">
+                <Building2 className="w-3 h-3 text-indigo-600" />
+                {profile.companyName}
+              </span>
+            )}
+          </div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Good morning, Chidi
+            Good morning{profile?.companyName ? `, ${profile.companyName}` : ", Chidi"}
           </h2>
           <p className="text-sm text-slate-500 leading-relaxed">
             Build professional business documents using the context you've already given Ahiia.
@@ -169,7 +247,7 @@ const Overview = () => {
             </div>
             <div className="mt-3">
               <span className="text-3xl font-black text-slate-900 tracking-tight">
-                24
+                {totalDocsCount > 0 ? totalDocsCount : documentsList.length}
               </span>
               <p className="text-xs text-slate-400 mt-1">
                 Total documents created
@@ -397,10 +475,33 @@ const Overview = () => {
             </div>
 
             <div className="mt-4">
-              <p className="text-base font-extrabold text-slate-900">
-                SolarTech Nigeria
-              </p>
-              <p className="text-xs text-slate-400 mt-0.5">Renewable Energy</p>
+              <div className="flex items-center gap-2.5">
+                {profile?.logoUrl ? (
+                  <img
+                    src={profile.logoUrl}
+                    alt={profile.companyName || "Company logo"}
+                    className="w-8 h-8 rounded-xl object-cover border border-slate-200 shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-xs font-black shrink-0">
+                    {(profile?.companyName || "LT")
+                      .split(" ")
+                      .filter(Boolean)
+                      .map((w) => w[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2)}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-base font-extrabold text-slate-900 truncate">
+                    {profile?.companyName || "lexis tech"}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5 truncate">
+                    {profile?.industry || "Financial services"}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Profile completeness bar */}
@@ -409,17 +510,30 @@ const Overview = () => {
                 <span className="font-semibold text-slate-700">
                   Profile completeness
                 </span>
-                <span className="font-bold text-blue-600">85%</span>
+                <span className="font-bold text-blue-600">
+                  {profile?.completenessPercent ?? 80}%
+                </span>
               </div>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-blue-600 h-full rounded-full transition-all duration-500"
-                  style={{ width: "85%" }}
+                  style={{ width: `${profile?.completenessPercent ?? 80}%` }}
                 />
               </div>
-              <p className="text-xs text-slate-400 mt-2">
-                Missing: <span className="text-slate-600">Competitive advantage</span>
-              </p>
+              {profile?.missingFields && profile.missingFields.length > 0 ? (
+                <p className="text-xs text-slate-400 mt-2">
+                  Missing:{" "}
+                  <span className="text-slate-600 font-medium">
+                    {profile.missingFields
+                      .map((f) => f.replace(/([A-Z])/g, " $1").toLowerCase())
+                      .join(", ")}
+                  </span>
+                </p>
+              ) : (
+                <p className="text-xs text-emerald-600 font-medium mt-2 flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" /> Profile fully structured
+                </p>
+              )}
             </div>
 
             <button

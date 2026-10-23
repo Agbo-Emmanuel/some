@@ -24,14 +24,20 @@ import SetupFooter from "../components/document-setup/SetupFooter";
 import OptionalInformation from "../components/document-setup/OptionalInformation";
 import GenerateModal from "../components/document-setup/GenerateModal";
 import SetupSidebar from "../components/document-setup/SetupSidebar";
-import { FORM_REGISTRY } from "../components/document-setup/FormRegistery";
+import {
+  FORM_REGISTRY,
+  getFormRegistryEntry,
+} from "../components/document-setup/FormRegistery";
 
 const DocumentSetup = () => {
   const { templateId } = useParams();
   const navigate = useNavigate();
 
   const template = getTemplate(templateId);
-  const registryEntry = FORM_REGISTRY[templateId];
+  const registryEntry =
+    getFormRegistryEntry(templateId) ||
+    (template && getFormRegistryEntry(template.id)) ||
+    FORM_REGISTRY[templateId];
 
   const [title, setTitle] = useState("");
   const [isTitleManual, setIsTitleManual] = useState(false);
@@ -153,16 +159,64 @@ const DocumentSetup = () => {
     setShowModal(true);
   };
 
+  // Helper to extract clean error message from API response (supports ProblemDetails / errors dict)
+  const extractApiErrorMessage = (err, fallback) => {
+    const data = err.response?.data;
+    if (!data) return err.message || fallback;
+
+    if (data.errors && typeof data.errors === "object") {
+      const msgs = [];
+      Object.values(data.errors).forEach((val) => {
+        if (Array.isArray(val)) {
+          msgs.push(...val.filter(Boolean));
+        } else if (typeof val === "string" && val.trim()) {
+          msgs.push(val.trim());
+        }
+      });
+      if (msgs.length > 0) return msgs.join(" ");
+    }
+
+    return (
+      data.message ||
+      data.detail ||
+      data.title ||
+      err.message ||
+      fallback
+    );
+  };
+
   // Build the payload conforming strictly to the Create Document API schema
   const buildPayload = () => {
-    const documentType = DOCUMENT_TYPE_MAP[templateId] || "Proposal";
+    const documentType =
+      DOCUMENT_TYPE_MAP[templateId] ||
+      DOCUMENT_TYPE_MAP[template?.id] ||
+      templateId ||
+      "Proposal";
     const docTitle = (title || "").trim() || template.title;
-    const structuredInputs = JSON.stringify({
+
+    // Filter out blank optional fields so payload remains clean and compact
+    const cleanedOptional = Object.entries(optionalValues).reduce(
+      (acc, [key, val]) => {
+        if (
+          typeof val === "string"
+            ? val.trim().length > 0
+            : val !== undefined && val !== null
+        ) {
+          acc[key] = typeof val === "string" ? val.trim() : val;
+        }
+        return acc;
+      },
+      {},
+    );
+
+    // CRITICAL: structuredInputs must be a JSON object, NOT JSON.stringify!
+    // The backend API validator explicitly enforces that structuredInputs is a JSON object.
+    const structuredInputs = {
       ...formData,
-      ...(Object.keys(optionalValues).length > 0
-        ? { optionalInformation: optionalValues }
+      ...(Object.keys(cleanedOptional).length > 0
+        ? { optionalInformation: cleanedOptional }
         : {}),
-    });
+    };
 
     return {
       documentType,
@@ -185,22 +239,26 @@ const DocumentSetup = () => {
       );
       setShowModal(false);
 
-      // Smoothly navigate to documents list or document view
-      if (result?.id) {
-        navigate(`/dashboard/documents`, {
-          state: { newlyCreatedId: result.id },
-        });
-      } else {
-        navigate("/dashboard/documents");
-      }
+      const createdId =
+        result?.id ||
+        result?.data?.id ||
+        result?.document?.id ||
+        result?.documentId;
+
+      // Smoothly navigate to documents list with the newly created document details
+      navigate(`/dashboard/documents`, {
+        state: {
+          newlyCreatedId: createdId,
+          newDocTitle: payload.title,
+          newDocType: payload.documentType,
+        },
+      });
     } catch (err) {
       console.error("Failed to generate document:", err);
-      const errMsg =
-        err.response?.data?.message ||
-        err.response?.data?.detail ||
-        err.response?.data?.title ||
-        err.message ||
-        "Failed to generate document. Please check your inputs and try again.";
+      const errMsg = extractApiErrorMessage(
+        err,
+        "Failed to generate document. Please check your inputs and try again.",
+      );
       toast.error(errMsg);
     } finally {
       setIsGenerating(false);
@@ -222,7 +280,12 @@ const DocumentSetup = () => {
       toast.success("Draft saved successfully!");
     } catch (err) {
       console.warn("API draft save failed, saved locally:", err);
-      toast.info("Draft saved to your workspace.");
+      const errMsg = extractApiErrorMessage(err, null);
+      if (errMsg) {
+        toast.info(`Draft saved to your workspace (${errMsg}).`);
+      } else {
+        toast.info("Draft saved to your workspace.");
+      }
     } finally {
       setIsSavingDraft(false);
     }

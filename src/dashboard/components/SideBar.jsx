@@ -189,15 +189,23 @@ const SideBar = ({
             onClick={onClose}
             className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group"
           >
-            <div className="w-10 h-10 rounded-full bg-[#0E1538] text-white flex items-center justify-center font-bold text-xs tracking-wider shrink-0 shadow-xs group-hover:ring-2 group-hover:ring-indigo-500/20 transition-all">
-              {profile.initials || "CO"}
+            <div className="w-10 h-10 rounded-full bg-[#0E1538] text-white flex items-center justify-center font-bold text-xs tracking-wider shrink-0 shadow-xs group-hover:ring-2 group-hover:ring-indigo-500/20 transition-all overflow-hidden">
+              {profile.logoUrl ? (
+                <img
+                  src={profile.logoUrl}
+                  alt={profile.company || profile.name || "Company"}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                profile.initials || "LT"
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-slate-900 truncate group-hover:text-indigo-950 transition-colors">
-                {profile.name || "Chidi Okafor"}
+                {profile.company || profile.name || "lexis tech"}
               </p>
               <p className="text-xs text-slate-400 truncate">
-                {profile.company || "SolarTech Nigeria"}
+                {profile.industry || "Financial services"}
               </p>
             </div>
           </Link>
