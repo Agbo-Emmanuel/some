@@ -37,6 +37,11 @@ export const updateBusinessContext = async (payload) => {
   return response.data;
 };
 
+export const patchUserProfile = async (payload) => {
+  const response = await api.patch(ENDPOINTS.UPDATE_USER_PROFILE, payload);
+  return response.data;
+};
+
 export const createAiProfile = async (payload) => {
   const response = await api.post(ENDPOINTS.CREATE_AI_PROFILE, payload);
   return response.data;

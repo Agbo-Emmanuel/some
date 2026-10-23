@@ -9,8 +9,10 @@ import {
   User,
   Settings,
   CheckCircle2,
+  Building2,
 } from "lucide-react";
 import { useCookies } from "react-cookie";
+import { getUserProfile } from "../../services/profile.service";
 
 const PAGE_TITLES = {
   "/dashboard": "Dashboard",
@@ -36,11 +38,7 @@ const PAGE_TITLES = {
 const DashboardHeader = ({
   titleOverride,
   onMenuToggle = () => {},
-  profile = {
-    name: "Chidi Okafor",
-    initials: "CO",
-    company: "SolarTech Nigeria",
-  },
+  profile = {},
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -49,6 +47,7 @@ const DashboardHeader = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [profileData, setProfileData] = useState(null);
 
   const profileRef = useRef(null);
   const notifRef = useRef(null);
@@ -59,6 +58,60 @@ const DashboardHeader = ({
     PAGE_TITLES[location.pathname] ||
     PAGE_TITLES[location.pathname.replace(/\/$/, "")] ||
     "Dashboard";
+
+  // Fetch or listen for updated profile data
+  useEffect(() => {
+    let isMounted = true;
+    const fetchHeaderProfile = async () => {
+      try {
+        const response = await getUserProfile();
+        const data = response?.companyName
+          ? response
+          : response?.data || response;
+        if (isMounted && data?.companyName) {
+          setProfileData(data);
+        }
+      } catch (err) {
+        console.warn("Could not fetch header profile:", err);
+      }
+    };
+
+    fetchHeaderProfile();
+
+    const handleProfileUpdated = (event) => {
+      if (event?.detail) {
+        setProfileData(event.detail);
+      } else {
+        fetchHeaderProfile();
+      }
+    };
+
+    window.addEventListener("ahiia:profile-updated", handleProfileUpdated);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("ahiia:profile-updated", handleProfileUpdated);
+    };
+  }, []);
+
+  const companyName =
+    profileData?.companyName ||
+    profile?.company ||
+    profile?.companyName ||
+    "lexis tech";
+  const logoUrl = profileData?.logoUrl || profile?.logoUrl;
+  const industry = profileData?.industry || profile?.industry;
+  const completeness =
+    profileData?.completenessPercent ?? profile?.completenessPercent;
+
+  const initials = companyName
+    ? companyName
+        .split(" ")
+        .filter(Boolean)
+        .map((w) => w[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "LT";
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -172,6 +225,33 @@ const DashboardHeader = ({
           )}
         </div>
 
+        {/* Company Name Badge */}
+        {companyName && (
+          <div className="hidden lg:flex items-center gap-2.5 px-3 py-1.5 bg-white border border-slate-200/80 rounded-2xl shadow-xs">
+            <div className="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-[10px] overflow-hidden shrink-0">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={companyName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-800 max-w-[130px] truncate leading-tight">
+                {companyName}
+              </p>
+              {industry && (
+                <p className="text-[10px] text-slate-400 max-w-[130px] truncate leading-none">
+                  {industry}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Profile Pill Dropdown */}
         <div className="relative" ref={profileRef}>
           <button
@@ -183,25 +263,42 @@ const DashboardHeader = ({
             className="flex items-center gap-2.5 py-1.5 pl-2 pr-3 bg-[#0F1738] hover:bg-[#16214C] text-white rounded-full shadow-xs transition-colors group cursor-pointer"
             aria-label="User menu"
           >
-            <div className="w-7 h-7 rounded-full bg-white/15 text-white flex items-center justify-center font-bold text-[11px] tracking-wider shrink-0">
-              {profile.initials || "CO"}
+            <div className="w-7 h-7 rounded-full bg-white/15 text-white flex items-center justify-center font-bold text-[11px] tracking-wider shrink-0 overflow-hidden">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={companyName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                initials
+              )}
             </div>
-            <span className="text-xs font-semibold tracking-tight hidden md:inline-block">
-              {profile.name || "Chidi Okafor"}
+            <span className="text-xs font-semibold tracking-tight hidden md:inline-block max-w-[130px] truncate">
+              {companyName}
             </span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white transition-colors shrink-0" />
           </button>
 
           {/* Profile menu popup */}
           {showProfileMenu && (
-            <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                <p className="text-xs font-bold text-slate-900 truncate">
-                  {profile.name}
-                </p>
-                <p className="text-[11px] text-slate-500 truncate">
-                  {profile.company}
-                </p>
+            <div className="absolute right-0 mt-2 w-60 bg-white border border-slate-100 rounded-2xl shadow-xl p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="px-3 py-2.5 border-b border-slate-100 mb-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-slate-900 truncate">
+                    {companyName}
+                  </p>
+                  {completeness !== undefined && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full shrink-0">
+                      {completeness}% complete
+                    </span>
+                  )}
+                </div>
+                {industry && (
+                  <p className="text-[11px] text-indigo-600 font-semibold truncate mt-0.5">
+                    {industry}
+                  </p>
+                )}
               </div>
 
               <button

@@ -143,7 +143,19 @@ export const TEMPLATES = [
   },
 ];
 
-export const getTemplate = (id) => TEMPLATES.find((t) => t.id === id);
+export const getTemplate = (id) => {
+  if (!id) return undefined;
+  const target = String(id).toLowerCase().replace(/_/g, "-");
+  return (
+    TEMPLATES.find((t) => t.id === id || t.id.toLowerCase() === target) ||
+    TEMPLATES.find(
+      (t) =>
+        DOCUMENT_TYPE_MAP[t.id]?.toLowerCase() === target ||
+        DOCUMENT_TYPE_MAP[target]?.toLowerCase() ===
+          DOCUMENT_TYPE_MAP[t.id]?.toLowerCase(),
+    )
+  );
+};
 
 // Placeholder company profile — in the real app this comes from the
 // Company Profile API/store.

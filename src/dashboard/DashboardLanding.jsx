@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import SideBar, {
   DEFAULT_USER_NAV_ITEMS,
@@ -14,7 +14,6 @@ import {
   Settings,
   HelpCircle,
 } from "lucide-react";
-
 export const ADMIN_NAV_ITEMS = [
   {
     name: "Dashboard",
@@ -65,6 +64,40 @@ const DashboardLanding = ({
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [headerTitle, setHeaderTitle] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await getUserProfile();
+      const data = response?.companyName
+        ? response
+        : response?.data || response;
+      if (data) {
+        setUserProfile(data);
+      }
+    } catch (err) {
+      console.warn("Could not load user profile in DashboardLanding:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (role === "user") {
+      fetchProfile();
+    }
+
+    const handleProfileUpdated = (event) => {
+      if (event?.detail) {
+        setUserProfile(event.detail);
+      } else {
+        fetchProfile();
+      }
+    };
+
+    window.addEventListener("ahiia:profile-updated", handleProfileUpdated);
+    return () => {
+      window.removeEventListener("ahiia:profile-updated", handleProfileUpdated);
+    };
+  }, [role]);
 
   // Determine nav items based on role or passed props
   const navItems =
@@ -77,6 +110,17 @@ const DashboardLanding = ({
       ? ADMIN_BOTTOM_NAV_ITEMS
       : DEFAULT_USER_BOTTOM_NAV_ITEMS);
 
+  const companyName = userProfile?.companyName || "lexis tech";
+  const initials = companyName
+    ? companyName
+        .split(" ")
+        .filter(Boolean)
+        .map((w) => w[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "LT";
+
   const activeProfile =
     profile ||
     (role === "admin"
@@ -86,9 +130,13 @@ const DashboardLanding = ({
           initials: "AD",
         }
       : {
-          name: "Chidi Okafor",
-          company: "SolarTech Nigeria",
-          initials: "CO",
+          name: companyName,
+          company: companyName,
+          industry: userProfile?.industry || "Financial services",
+          logoUrl: userProfile?.logoUrl || null,
+          initials,
+          completenessPercent: userProfile?.completenessPercent ?? 80,
+          missingFields: userProfile?.missingFields || [],
         });
 
   return (
@@ -113,7 +161,14 @@ const DashboardLanding = ({
 
         {/* Dynamic Page Content with context support */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <Outlet context={{ setHeaderTitle }} />
+          <Outlet
+            context={{
+              setHeaderTitle,
+              profile: activeProfile,
+              userProfile,
+              refreshProfile: fetchProfile,
+            }}
+          />
         </main>
       </div>
     </div>

@@ -15,7 +15,15 @@ export const getDocuments = async (params = {}) => {
  * @param {Object} payload - CreateDocumentRequest
  */
 export const createDocument = async (payload) => {
-  const response = await api.post(ENDPOINTS.DOCUMENTS, payload);
+  const normalized = { ...payload };
+  if (typeof normalized.structuredInputs === "string") {
+    try {
+      normalized.structuredInputs = JSON.parse(normalized.structuredInputs);
+    } catch {
+      // keep as is
+    }
+  }
+  const response = await api.post(ENDPOINTS.DOCUMENTS, normalized);
   return response.data;
 };
 
@@ -183,7 +191,15 @@ export const getDocumentDrafts = async () => {
 };
 
 export const createDocumentDraft = async (payload) => {
-  const response = await api.post(ENDPOINTS.DOCUMENT_DRAFTS, payload);
+  const normalized = { ...payload };
+  if (typeof normalized.structuredInputs === "string") {
+    try {
+      normalized.structuredInputs = JSON.parse(normalized.structuredInputs);
+    } catch {
+      // keep as is
+    }
+  }
+  const response = await api.post(ENDPOINTS.DOCUMENT_DRAFTS, normalized);
   return response.data;
 };
 
