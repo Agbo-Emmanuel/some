@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FilePlus,
@@ -11,150 +11,124 @@ import {
   ArrowRight,
   MoreHorizontal,
   Check,
-  CheckCircle2,
   FileCheck2,
   PieChart,
   Megaphone,
   LayoutGrid,
   Layers,
-  ExternalLink,
   Building2,
+  Copy,
+  Trash2,
+  Loader2,
+  FileSignature,
+  BarChart3,
+  FileStack,
+  RefreshCw,
 } from "lucide-react";
-import { getUserProfile } from "../../services/profile.service";
-import { getDocuments } from "../../services/document.service";
+import { toast } from "react-toastify";
+import { getDashboardInsights } from "../../services/insights.service";
+import {
+  duplicateDocument,
+  deleteDocument,
+} from "../../services/document.service";
 
-const INITIAL_DOCUMENTS = [
-  {
-    id: "doc-1",
-    title: "Solar Installation Proposal",
-    type: "Business Proposal",
-    revisions: 6,
-    status: "Finalized",
-    updatedAt: "Updated 2 hours ago",
-    icon: FileText,
-  },
-  {
-    id: "doc-2",
-    title: "SME Partnership Contract",
-    type: "Contract",
-    revisions: 3,
-    status: "Draft",
-    updatedAt: "Updated 2 hours ago",
-    icon: FileCheck2,
-  },
-  {
-    id: "doc-3",
-    title: "Marketing Strategy 2026",
-    type: "Marketing Plan",
-    revisions: 9,
-    status: "Draft",
-    updatedAt: "Updated 2 hours ago",
-    icon: Megaphone,
-  },
-  {
-    id: "doc-4",
-    title: "Warehouse Intake SOP",
-    type: "SOP",
-    revisions: 2,
-    status: "Draft",
-    updatedAt: "Updated 2 hours ago",
-    icon: LayoutGrid,
-  },
-  {
-    id: "doc-5",
-    title: "Series-A Investor Deck",
-    type: "Pitch Deck",
-    revisions: 12,
-    status: "Exported",
-    updatedAt: "Updated 2 hours ago",
-    icon: PieChart,
-  },
-  {
-    id: "doc-6",
-    title: "Ridgepoint Business Plan",
-    type: "Presentation",
-    revisions: 3,
-    status: "Draft",
-    updatedAt: "Updated 2 hours ago",
-    icon: Layers,
-  },
-  {
-    id: "doc-7",
-    title: "Fulfilment Proposal",
-    type: "Business Proposal",
-    revisions: 7,
-    status: "Exported",
-    updatedAt: "Updated 2 hours ago",
-    icon: FileText,
-  },
-];
+const TYPE_CONFIG = {
+  proposal: { icon: FileText, tint: "bg-indigo-50 text-indigo-600" },
+  "business-proposal": { icon: FileText, tint: "bg-indigo-50 text-indigo-600" },
+  contract: { icon: FileSignature, tint: "bg-violet-50 text-violet-600" },
+  pitchdeck: { icon: Briefcase, tint: "bg-amber-50 text-amber-600" },
+  "pitch-deck": { icon: Briefcase, tint: "bg-amber-50 text-amber-600" },
+  sop: { icon: LayoutGrid, tint: "bg-emerald-50 text-emerald-600" },
+  marketingplan: { icon: Megaphone, tint: "bg-sky-50 text-sky-600" },
+  "marketing-plan": { icon: Megaphone, tint: "bg-sky-50 text-sky-600" },
+  presentation: { icon: Layers, tint: "bg-purple-50 text-purple-600" },
+  businessplan: { icon: FileStack, tint: "bg-rose-50 text-rose-600" },
+  "business-plan": { icon: FileStack, tint: "bg-rose-50 text-rose-600" },
+};
+
+function getTypeConfig(doc) {
+  const key = (
+    doc?.slug ||
+    doc?.documentType ||
+    doc?.documentTypeLabel ||
+    ""
+  )
+    .toLowerCase()
+    .replace(/[_\s]/g, "-");
+
+  return (
+    TYPE_CONFIG[key] || {
+      icon: FileText,
+      tint: "bg-indigo-50 text-indigo-600",
+    }
+  );
+}
+
+function formatTimeAgo(dateStr) {
+  if (!dateStr) return "Recently updated";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "Recently updated";
+
+  const diffMs = Date.now() - date.getTime();
+  const diffMins = Math.max(0, Math.floor(diffMs / 60000));
+
+  if (diffMins < 1) return "Updated just now";
+  if (diffMins < 60) return `Updated ${diffMins}m ago`;
+  const hrs = Math.floor(diffMins / 60);
+  if (hrs < 24) return `Updated ${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "Updated yesterday";
+  if (days < 30) return `Updated ${days}d ago`;
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
 
 const Overview = () => {
   const navigate = useNavigate();
+  const [insights, setInsights] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
   const [typeFilter, setTypeFilter] = useState("All types");
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [activeMenuDocId, setActiveMenuDocId] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-  const [documentsList, setDocumentsList] = useState(INITIAL_DOCUMENTS);
-  const [totalDocsCount, setTotalDocsCount] = useState(0);
+  const menuRef = useRef(null);
 
-  const fetchProfile = async () => {
+  // Close row dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setActiveMenuDocId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const fetchDashboardInsightsData = async (showLoader = true) => {
     try {
-      setLoadingProfile(true);
-      const response = await getUserProfile();
-      const data = response?.companyName
-        ? response
-        : response?.data || response;
+      if (showLoader) setLoading(true);
+      const response = await getDashboardInsights();
+      const data =
+        response?.activity || response?.profile ? response : response?.data || response;
       if (data) {
-        setProfile(data);
+        setInsights(data);
       }
     } catch (error) {
-      console.log("Failed to load profile in Overview:", error);
+      console.error("Failed to load dashboard insights:", error);
+      toast.error("Could not load dashboard data. Please try again.");
     } finally {
-      setLoadingProfile(false);
-    }
-  };
-
-  const fetchOverviewDocuments = async () => {
-    try {
-      const response = await getDocuments();
-      const items = Array.isArray(response)
-        ? response
-        : Array.isArray(response?.items)
-          ? response.items
-          : Array.isArray(response?.data)
-            ? response.data
-            : [];
-
-      if (items.length > 0) {
-        const formatted = items.map((doc) => ({
-          id: doc.id,
-          title: doc.title || "Untitled Document",
-          type: doc.documentTypeLabel || doc.documentType || "Business Proposal",
-          revisions: doc.revisionCount ?? 1,
-          status: doc.status || "Draft",
-          icon: FileText,
-          tint: "bg-indigo-50 text-indigo-600",
-        }));
-        setDocumentsList(formatted);
-        setTotalDocsCount(response.totalCount ?? items.length);
-      }
-    } catch (err) {
-      console.warn("Could not load documents for overview:", err);
+      if (showLoader) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProfile();
-    fetchOverviewDocuments();
+    fetchDashboardInsightsData(true);
 
-    const handleProfileUpdated = (event) => {
-      if (event?.detail) {
-        setProfile(event.detail);
-      } else {
-        fetchProfile();
-      }
+    const handleProfileUpdated = () => {
+      fetchDashboardInsightsData(false);
     };
     window.addEventListener("ahiia:profile-updated", handleProfileUpdated);
     return () => {
@@ -162,14 +136,74 @@ const Overview = () => {
     };
   }, []);
 
+  // Safe data extraction
+  const activity = insights?.activity || {};
+  const profile = insights?.profile || {};
+  const brandKit = insights?.brandKit || {};
+  const recentDocuments = Array.isArray(insights?.recentDocuments)
+    ? insights.recentDocuments
+    : [];
+
+  const profileLogo = brandKit?.logoUrl || profile?.logoUrl;
+  const companyInitials = (profile?.companyName || "LT")
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  // Document actions
+  const handleDuplicate = async (docId) => {
+    try {
+      setActionLoadingId(docId);
+      setActiveMenuDocId(null);
+      await duplicateDocument(docId);
+      toast.success("Document duplicated successfully");
+      await fetchDashboardInsightsData(false);
+    } catch (err) {
+      toast.error(
+        err?.response?.data?.message || "Failed to duplicate document"
+      );
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleDelete = async (docId) => {
+    try {
+      setActionLoadingId(docId);
+      setActiveMenuDocId(null);
+      await deleteDocument(docId);
+      toast.success("Document deleted");
+      await fetchDashboardInsightsData(false);
+    } catch (err) {
+      toast.error(
+        err?.response?.data?.message || "Failed to delete document"
+      );
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   // Filter documents
-  const filteredDocuments = documentsList.filter((doc) => {
+  const filteredDocuments = recentDocuments.filter((doc) => {
+    const docType = doc.documentTypeLabel || doc.documentType || "";
     const matchesType =
-      typeFilter === "All types" || doc.type === typeFilter;
+      typeFilter === "All types" || docType === typeFilter;
     const matchesStatus =
       statusFilter === "All Status" || doc.status === statusFilter;
     return matchesType && matchesStatus;
   });
+
+  // Collect unique document types present in recentDocuments
+  const availableTypes = Array.from(
+    new Set(
+      recentDocuments
+        .map((d) => d.documentTypeLabel || d.documentType)
+        .filter(Boolean)
+    )
+  );
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -212,7 +246,7 @@ const Overview = () => {
             )}
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Good morning{profile?.companyName ? `, ${profile.companyName}` : ", Chidi"}
+            Good morning{profile?.companyName ? `, ${profile.companyName}` : ""}
           </h2>
           <p className="text-sm text-slate-500 leading-relaxed">
             Build professional business documents using the context you've already given Ahiia.
@@ -231,11 +265,22 @@ const Overview = () => {
 
       {/* 2. Your Activity Stat Cards */}
       <div>
-        <h3 className="text-base font-extrabold text-slate-900 mb-3.5">
-          Your activity
-        </h3>
+        <div className="flex items-center justify-between mb-3.5">
+          <h3 className="text-base font-extrabold text-slate-900">
+            Your activity
+          </h3>
+          <button
+            type="button"
+            onClick={() => fetchDashboardInsightsData(false)}
+            title="Refresh overview"
+            className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-indigo-600" : ""}`} />
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {/* Card 1 */}
+          {/* Card 1: Documents Created */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-indigo-100 transition-colors">
             <div className="flex items-start justify-between">
               <span className="text-xs font-bold text-slate-600">
@@ -247,7 +292,7 @@ const Overview = () => {
             </div>
             <div className="mt-3">
               <span className="text-3xl font-black text-slate-900 tracking-tight">
-                {totalDocsCount > 0 ? totalDocsCount : documentsList.length}
+                {activity?.documentsCreated ?? (loading ? "—" : 0)}
               </span>
               <p className="text-xs text-slate-400 mt-1">
                 Total documents created
@@ -255,7 +300,7 @@ const Overview = () => {
             </div>
           </div>
 
-          {/* Card 2 */}
+          {/* Card 2: Most Used Generator */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-indigo-100 transition-colors">
             <div className="flex items-start justify-between">
               <span className="text-xs font-bold text-slate-600">
@@ -267,7 +312,9 @@ const Overview = () => {
             </div>
             <div className="mt-3">
               <span className="text-2xl font-black text-slate-900 tracking-tight truncate block">
-                Business Proposal
+                {activity?.mostUsedGenerator?.label ||
+                  activity?.mostUsedGenerator?.documentType ||
+                  (loading ? "—" : "None yet")}
               </span>
               <p className="text-xs text-slate-400 mt-1">
                 Your most frequently used document type
@@ -275,7 +322,7 @@ const Overview = () => {
             </div>
           </div>
 
-          {/* Card 3 */}
+          {/* Card 3: AI Edits */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-indigo-100 transition-colors sm:col-span-2 md:col-span-1">
             <div className="flex items-start justify-between">
               <span className="text-xs font-bold text-slate-600">
@@ -287,7 +334,7 @@ const Overview = () => {
             </div>
             <div className="mt-3">
               <span className="text-3xl font-black text-slate-900 tracking-tight">
-                38
+                {activity?.aiEdits ?? (loading ? "—" : 0)}
               </span>
               <p className="text-xs text-slate-400 mt-1">
                 AI-assisted edits performed
@@ -303,9 +350,14 @@ const Overview = () => {
         <div className="lg:col-span-2 bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs">
           {/* Table Header / Filters */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-100">
-            <h3 className="text-base font-extrabold text-slate-900">
-              Recent Documents
-            </h3>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">
+                Recent Documents
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Quick access to your latest drafts and generated proposals
+              </p>
+            </div>
 
             <div className="flex items-center gap-2.5">
               {/* Type Filter */}
@@ -316,12 +368,19 @@ const Overview = () => {
                   className="appearance-none text-xs font-semibold bg-white text-slate-700 pl-3 pr-8 py-2 rounded-xl border border-slate-200 shadow-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
                 >
                   <option>All types</option>
-                  <option>Business Proposal</option>
-                  <option>Contract</option>
-                  <option>Marketing Plan</option>
-                  <option>SOP</option>
-                  <option>Pitch Deck</option>
-                  <option>Presentation</option>
+                  {availableTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                  {availableTypes.length === 0 && (
+                    <>
+                      <option>Business Proposal</option>
+                      <option>Contract</option>
+                      <option>Marketing Plan</option>
+                      <option>Pitch Deck</option>
+                    </>
+                  )}
                 </select>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
               </div>
@@ -334,8 +393,8 @@ const Overview = () => {
                   className="appearance-none text-xs font-semibold bg-white text-slate-700 pl-3 pr-8 py-2 rounded-xl border border-slate-200 shadow-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
                 >
                   <option>All Status</option>
-                  <option>Finalized</option>
                   <option>Draft</option>
+                  <option>Finalized</option>
                   <option>Exported</option>
                 </select>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
@@ -345,13 +404,59 @@ const Overview = () => {
 
           {/* Documents List */}
           <div className="divide-y divide-slate-100">
-            {filteredDocuments.length === 0 ? (
-              <div className="text-center py-12 text-slate-400 text-sm">
-                No documents matching the selected filters.
+            {loading && recentDocuments.length === 0 ? (
+              <div className="py-6 space-y-4">
+                {[1, 2, 3].map((n) => (
+                  <div
+                    key={n}
+                    className="flex items-center justify-between py-2 px-1 animate-pulse"
+                  >
+                    <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 shrink-0" />
+                      <div className="space-y-1.5 flex-1 max-w-sm">
+                        <div className="h-4 bg-slate-100 rounded w-3/4" />
+                        <div className="h-3 bg-slate-100 rounded w-1/2" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-6 w-16 bg-slate-100 rounded-full" />
+                      <div className="h-8 w-16 bg-slate-100 rounded-lg hidden sm:block" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredDocuments.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-300 flex items-center justify-center mx-auto mb-3">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-700">
+                  {recentDocuments.length === 0
+                    ? "No documents yet"
+                    : "No documents matching the selected filters"}
+                </h4>
+                <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                  {recentDocuments.length === 0
+                    ? "Start creating professional proposals, plans, and decks with Ahiia AI."
+                    : "Try resetting your filter to view all available recent documents."}
+                </p>
+                {recentDocuments.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/dashboard/create-document")}
+                    className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-[#131B4D] text-white text-xs font-bold hover:bg-[#1B2666] transition-colors cursor-pointer"
+                  >
+                    <FilePlus className="w-3.5 h-3.5" />
+                    Create your first document
+                  </button>
+                )}
               </div>
             ) : (
               filteredDocuments.map((doc) => {
-                const IconComponent = doc.icon;
+                const typeCfg = getTypeConfig(doc);
+                const IconComponent = typeCfg.icon;
+                const isItemActionLoading = actionLoadingId === doc.id;
+
                 return (
                   <div
                     key={doc.id}
@@ -359,15 +464,21 @@ const Overview = () => {
                   >
                     {/* Left: Icon + Info */}
                     <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                      <div className="w-10 h-10 rounded-xl bg-blue-50/70 text-blue-600 flex items-center justify-center shrink-0">
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${typeCfg.tint}`}
+                      >
                         <IconComponent className="w-5 h-5" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-slate-900 truncate">
-                          {doc.title}
+                          {doc.title || "Untitled Document"}
                         </p>
                         <p className="text-xs text-slate-400 truncate">
-                          {doc.type} • {doc.revisions} revisions
+                          {doc.documentTypeLabel ||
+                            doc.documentType ||
+                            "Business Proposal"}{" "}
+                          • {doc.revisionCount ?? 1} revision
+                          {doc.revisionCount === 1 ? "" : "s"}
                         </p>
                       </div>
                     </div>
@@ -376,7 +487,7 @@ const Overview = () => {
                     <div className="hidden sm:flex items-center gap-4 shrink-0">
                       <div>{getStatusBadge(doc.status)}</div>
                       <span className="text-xs text-slate-400 w-32 text-right">
-                        {doc.updatedAt}
+                        {formatTimeAgo(doc.updatedAt)}
                       </span>
                     </div>
 
@@ -384,7 +495,13 @@ const Overview = () => {
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
-                        onClick={() => navigate("/dashboard/documents")}
+                        onClick={() =>
+                          navigate(
+                            `/dashboard/create-document/${
+                              doc.slug || "business-proposal"
+                            }`
+                          )
+                        }
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-xs transition-colors cursor-pointer"
                       >
                         <span>Open</span>
@@ -392,7 +509,7 @@ const Overview = () => {
                       </button>
 
                       {/* Dropdown menu trigger */}
-                      <div className="relative">
+                      <div className="relative" ref={menuRef}>
                         <button
                           type="button"
                           onClick={() =>
@@ -400,38 +517,48 @@ const Overview = () => {
                               activeMenuDocId === doc.id ? null : doc.id
                             )
                           }
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                          disabled={isItemActionLoading}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer"
                           aria-label="More actions"
                         >
-                          <MoreHorizontal className="w-4 h-4" />
+                          {isItemActionLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                          ) : (
+                            <MoreHorizontal className="w-4 h-4" />
+                          )}
                         </button>
 
                         {activeMenuDocId === doc.id && (
-                          <div className="absolute right-0 mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-lg p-1 z-30 animate-in fade-in duration-100">
+                          <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-lg p-1 z-30 animate-in fade-in duration-100">
                             <button
                               type="button"
                               onClick={() => {
                                 setActiveMenuDocId(null);
-                                navigate("/dashboard/documents");
+                                navigate(
+                                  `/dashboard/create-document/${
+                                    doc.slug || "business-proposal"
+                                  }`
+                                );
                               }}
-                              className="w-full text-left px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
+                              className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-lg flex items-center gap-2 cursor-pointer"
                             >
+                              <Edit3 className="w-3.5 h-3.5 text-slate-400" />
                               Edit Document
                             </button>
                             <button
                               type="button"
-                              onClick={() => {
-                                setActiveMenuDocId(null);
-                              }}
-                              className="w-full text-left px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
+                              onClick={() => handleDuplicate(doc.id)}
+                              className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-lg flex items-center gap-2 cursor-pointer"
                             >
+                              <Copy className="w-3.5 h-3.5 text-slate-400" />
                               Duplicate
                             </button>
                             <button
                               type="button"
-                              onClick={() => setActiveMenuDocId(null)}
-                              className="w-full text-left px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-lg"
+                              onClick={() => handleDelete(doc.id)}
+                              className="w-full text-left px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
                             >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
                               Delete
                             </button>
                           </div>
@@ -448,7 +575,10 @@ const Overview = () => {
           <div className="pt-5 border-t border-slate-100 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-slate-400">
               <Layers className="w-3.5 h-3.5" />
-              <span>Showing {filteredDocuments.length} of {INITIAL_DOCUMENTS.length} documents</span>
+              <span>
+                Showing {filteredDocuments.length} of {recentDocuments.length}{" "}
+                document{recentDocuments.length === 1 ? "" : "s"}
+              </span>
             </div>
 
             <button
@@ -475,51 +605,46 @@ const Overview = () => {
             </div>
 
             <div className="mt-4">
-              <div className="flex items-center gap-2.5">
-                {profile?.logoUrl ? (
+              <div className="flex items-center gap-3">
+                {profileLogo ? (
                   <img
-                    src={profile.logoUrl}
+                    src={profileLogo}
                     alt={profile.companyName || "Company logo"}
-                    className="w-8 h-8 rounded-xl object-cover border border-slate-200 shrink-0"
+                    className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-xs font-black shrink-0">
-                    {(profile?.companyName || "LT")
-                      .split(" ")
-                      .filter(Boolean)
-                      .map((w) => w[0])
-                      .join("")
-                      .toUpperCase()
-                      .slice(0, 2)}
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-xs font-black shrink-0 border border-indigo-100">
+                    {companyInitials}
                   </div>
                 )}
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-base font-extrabold text-slate-900 truncate">
-                    {profile?.companyName || "lexis tech"}
+                    {profile?.companyName || "Your Business"}
                   </p>
                   <p className="text-xs text-slate-400 mt-0.5 truncate">
-                    {profile?.industry || "Financial services"}
+                    {profile?.industry || "Industry not specified"}
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Profile completeness bar */}
-            <div className="mt-4">
+            <div className="mt-5">
               <div className="flex items-center justify-between text-xs mb-1.5">
                 <span className="font-semibold text-slate-700">
                   Profile completeness
                 </span>
                 <span className="font-bold text-blue-600">
-                  {profile?.completenessPercent ?? 80}%
+                  {profile?.completenessPercent ?? 0}%
                 </span>
               </div>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-blue-600 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${profile?.completenessPercent ?? 80}%` }}
+                  style={{ width: `${profile?.completenessPercent ?? 0}%` }}
                 />
               </div>
+
               {profile?.missingFields && profile.missingFields.length > 0 ? (
                 <p className="text-xs text-slate-400 mt-2">
                   Missing:{" "}
@@ -555,13 +680,21 @@ const Overview = () => {
                 </div>
                 <h4 className="text-sm font-bold text-slate-900">Brand Kit</h4>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#ECFDF5] text-[#059669]">
-                Configured
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                  brandKit?.configured
+                    ? "bg-[#ECFDF5] text-[#059669] border border-emerald-200/50"
+                    : "bg-slate-100 text-slate-600 border border-slate-200"
+                }`}
+              >
+                {brandKit?.configured ? "Configured" : "Not configured"}
               </span>
             </div>
 
             <p className="text-xs text-slate-500 mt-3 leading-relaxed">
-              Your brand identity is ready to be applied to generated documents.
+              {brandKit?.configured
+                ? "Your brand identity is ready to be applied to generated documents."
+                : "Set up your brand colors, typography, and logo for documents."}
             </p>
 
             {/* Brand Kit Details */}
@@ -569,34 +702,66 @@ const Overview = () => {
               {/* Logo */}
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Logo</span>
-                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#0E1538] text-white text-[11px] font-mono">
-                  <span className="w-4 h-4 rounded bg-white/20 text-[9px] flex items-center justify-center font-bold">
-                    ST
+                {brandKit?.logoUrl ? (
+                  <div className="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-700 text-[11px]">
+                    <img
+                      src={brandKit.logoUrl}
+                      alt="Brand logo"
+                      className="w-4 h-4 rounded object-cover bg-white"
+                    />
+                    <span className="font-mono text-[10px] text-slate-600 truncate max-w-[110px]">
+                      logo.jpg
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-slate-400 italic text-[11px]">
+                    Not configured
                   </span>
-                  <span>solartech-logo.svg</span>
-                </div>
+                )}
               </div>
 
               {/* Colours */}
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Colours</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-[#0E1538] border border-white shadow-xs" />
-                  <span className="w-4 h-4 rounded-full bg-[#2563EB] border border-white shadow-xs" />
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="w-4 h-4 rounded-full border border-slate-200 shadow-xs"
+                      style={{
+                        backgroundColor: brandKit?.primaryColor || "#0F172A",
+                      }}
+                      title={`Primary: ${brandKit?.primaryColor || "#0F172A"}`}
+                    />
+                    <span
+                      className="w-4 h-4 rounded-full border border-slate-200 shadow-xs"
+                      style={{
+                        backgroundColor: brandKit?.secondaryColor || "#2563EB",
+                      }}
+                      title={`Secondary: ${brandKit?.secondaryColor || "#2563EB"}`}
+                    />
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-500">
+                    {brandKit?.primaryColor || "#0F172A"}
+                  </span>
                 </div>
               </div>
 
               {/* Font */}
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Font</span>
-                <span className="font-bold text-slate-800">Montserrat</span>
+                <span className="font-bold text-slate-800">
+                  {brandKit?.font || "Default"}
+                </span>
               </div>
 
               {/* Tagline */}
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Tagline</span>
-                <span className="font-medium text-slate-700">
-                  Clean power, built to last
+                <span
+                  className="font-medium text-slate-700 truncate max-w-[160px] text-right"
+                  title={brandKit?.tagline || ""}
+                >
+                  {brandKit?.tagline ? `"${brandKit.tagline}"` : "None set"}
                 </span>
               </div>
             </div>
