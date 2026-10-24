@@ -40,6 +40,7 @@ import {
 } from "../../services/document.service";
 import { getUserProfile } from "../../services/profile.service";
 import { getBrandKit } from "../../services/brandKit.service";
+import ExportModal from "../components/ExportModal";
 
 // ============================================================================
 // Default initial proposal content mirroring reference design visual hierarchy
@@ -89,6 +90,111 @@ const DEFAULT_PROPOSAL_SECTIONS = [
   },
 ];
 
+// ============================================================================
+// Default initial SOP content mirroring Corporate reference design
+// ============================================================================
+const DEFAULT_SOP_SECTIONS = [
+  {
+    id: "purpose-and-scope",
+    title: "Purpose & Scope",
+    paragraphs: [
+      "This procedure covers the receipt, inspection and recording of all solar equipment arriving at the Ikeja store. It applies to every inbound delivery, including supplier shipments and site returns.",
+    ],
+  },
+  {
+    id: "responsibilities-and-requirements",
+    title: "Responsibilities & Requirements",
+    keyValueRows: [
+      { key: "Performed by", value: "Warehouse Officer" },
+      { key: "Approved by", value: "Warehouse Supervisor" },
+      { key: "When", value: "On every inbound delivery, before offload" },
+      {
+        key: "Required",
+        value: "Delivery note, intake log, torch, inspection checklist",
+      },
+    ],
+  },
+  {
+    id: "procedure",
+    title: "Procedure",
+    steps: [
+      "Confirm the delivery note against the purchase order before any item leaves the vehicle.",
+      "Inspect panel and inverter packaging for impact damage, water ingress or broken seals.",
+      "Count each line item and record quantities in the intake log.",
+      "Photograph any damage and raise a discrepancy note with the supplier the same day.",
+      "Move accepted stock to its bin location and update the stock record.",
+      "Submit the completed intake log to the Supervisor for approval.",
+    ],
+  },
+  {
+    id: "notes-and-exceptions",
+    title: "Notes & Exceptions",
+    callouts: [
+      {
+        type: "warning",
+        title: "Do not offload",
+        content:
+          "If serial numbers do not match the delivery note, do not offload. Contact the Supervisor before accepting the shipment.",
+      },
+      {
+        type: "info",
+        title: "Out-of-hours deliveries",
+        content:
+          "Deliveries arriving after 18:00 are held sealed in the receiving bay and inspected at 08:00 the next working day.",
+      },
+    ],
+  },
+];
+
+// ============================================================================
+// Default initial Business Plan content mirroring Corporate reference design
+// ============================================================================
+const DEFAULT_BUSINESS_PLAN_SECTIONS = [
+  {
+    id: "executive-summary",
+    title: "Executive Summary",
+    paragraphs: [
+      "SolarTech Nigeria designs, installs and maintains commercial solar systems for businesses that need dependable power without relying on the grid. This plan covers the next three years of growth across the Southwest, funded by a combination of retained earnings and a ₦120,000,000 facility.",
+    ],
+  },
+  {
+    id: "market-and-customers",
+    title: "Market & Customers",
+    leadText:
+      "Our customers are commercial operators spending ₦1,500,000 or more a month on diesel — manufacturing, cold chain, hospitality and light industrial parks.",
+    bullets: [
+      "Primary market: Lagos, Ogun and Oyo industrial corridors",
+      "Buying trigger: diesel cost, outage frequency, equipment damage",
+      "Competitors compete on equipment price; we compete on measured output",
+    ],
+  },
+  {
+    id: "operations-and-strategy",
+    title: "Operations & Strategy",
+    bullets: [
+      "Two installation crews expanding to four by Q3 2027",
+      "Monitoring desk covering every installed system under maintenance",
+      "Framework supply agreements for panels, inverters and storage",
+    ],
+  },
+  {
+    id: "financial-overview",
+    title: "Financial Overview",
+    isFinancialOverview: true,
+    keyValueRows: [
+      { key: "Revenue target — 2026", value: "₦480,000,000" },
+      { key: "Funding required", value: "₦120,000,000" },
+      { key: "Committed from retained earnings", value: "₦45,000,000" },
+      { key: "Facility sought", value: "₦75,000,000" },
+    ],
+    disclosure: {
+      title: "Figures provided by you",
+      content:
+        "Every number in this plan comes from the financial information you entered. Ahiia does not generate projections you did not supply.",
+    },
+  },
+];
+
 // Quick actions listed in reference design AI Assistant panel
 const QUICK_ACTIONS = [
   "Improve writing",
@@ -111,12 +217,60 @@ const DocumentWorkspace = () => {
   // Route state passed from DocumentSetup if newly generated
   const navState = location.state || {};
 
+  const rawType = (
+    navState.docType ||
+    navState.documentType ||
+    ""
+  ).toLowerCase().replace(/[_\s]/g, "-");
+
+  const initialIsBusinessPlan =
+    rawType.includes("business-plan") ||
+    rawType.includes("businessplan") ||
+    (navState.docTitle &&
+      navState.docTitle.toLowerCase().includes("business plan")) ||
+    location.pathname.toLowerCase().includes("business-plan") ||
+    location.search.toLowerCase().includes("business-plan");
+
+  const initialDocType =
+    navState.docType ||
+    navState.documentType ||
+    (navState.docTitle &&
+    navState.docTitle.toLowerCase().includes("sop")
+      ? "SOP"
+      : null) ||
+    (location.pathname.toLowerCase().includes("sop") ||
+    location.search.toLowerCase().includes("sop")
+      ? "SOP"
+      : null);
+
+  const initialIsSop =
+    !initialIsBusinessPlan &&
+    (initialDocType === "SOP" ||
+      initialDocType === "sop" ||
+      (navState.docTitle &&
+        navState.docTitle.toLowerCase().includes("sop")) ||
+      location.pathname.toLowerCase().includes("sop") ||
+      location.search.toLowerCase().includes("sop"));
+
   // Document metadata state
   const [docData, setDocData] = useState(null);
   const [docTitle, setDocTitle] = useState(
-    navState.docTitle || "Solar Installation Proposal"
+    navState.docTitle ||
+      (initialIsBusinessPlan
+        ? "Growth & Funding Business Plan"
+        : initialIsSop
+          ? "Warehouse Intake SOP"
+          : "Solar Installation Proposal")
   );
-  const [revisionCount, setRevisionCount] = useState(6);
+  const [revisionCount, setRevisionCount] = useState(
+    navState.revisionCount !== undefined
+      ? navState.revisionCount
+      : initialIsBusinessPlan
+        ? 2
+        : initialIsSop
+          ? 2
+          : 6
+  );
   const [saveStatus, setSaveStatus] = useState("Saved");
   const [loading, setLoading] = useState(false);
   const [styleTemplate, setStyleTemplate] = useState(
@@ -133,8 +287,17 @@ const DocumentWorkspace = () => {
   // Style popover state
   const [showStyleMenu, setShowStyleMenu] = useState(false);
 
+  // Centralized Export Modal state
+  const [showExportModal, setShowExportModal] = useState(false);
+
   // Editable sections
-  const [sections, setSections] = useState(DEFAULT_PROPOSAL_SECTIONS);
+  const [sections, setSections] = useState(
+    initialIsBusinessPlan
+      ? DEFAULT_BUSINESS_PLAN_SECTIONS
+      : initialIsSop
+        ? DEFAULT_SOP_SECTIONS
+        : DEFAULT_PROPOSAL_SECTIONS
+  );
   const [editingSectionId, setEditingSectionId] = useState(null);
   const [editingContent, setEditingContent] = useState({});
 
@@ -148,8 +311,12 @@ const DocumentWorkspace = () => {
   });
   const [companyProfile, setCompanyProfile] = useState({
     companyName: "SolarTech Nigeria",
-    preparedFor: "Green Energy Solutions Ltd.",
-    preparedBy: "Ahiia Energy Services",
+    preparedFor: initialIsBusinessPlan
+      ? "Board and prospective lenders"
+      : "Green Energy Solutions Ltd.",
+    preparedBy: "SolarTech Nigeria",
+    processOwner: "Warehouse Supervisor, Ikeja store",
+    issuedBy: "SolarTech Nigeria Operations",
   });
 
   const styleMenuRef = useRef(null);
@@ -188,9 +355,186 @@ const DocumentWorkspace = () => {
               if (doc.revisionCount) setRevisionCount(doc.revisionCount);
               if (doc.styleTemplate) setStyleTemplate(doc.styleTemplate);
 
-              // If backend returned structured proposal content
+              const docTypeVal =
+                doc.documentType || doc.type || doc.documentTypeLabel || "";
+              const docIsBusinessPlan =
+                docTypeVal === "BusinessPlan" ||
+                docTypeVal.toLowerCase().includes("business-plan") ||
+                docTypeVal.toLowerCase().includes("businessplan") ||
+                (doc.title && doc.title.toLowerCase().includes("business plan"));
+              const docIsSop =
+                !docIsBusinessPlan &&
+                (docTypeVal === "SOP" ||
+                  docTypeVal.toLowerCase().includes("sop") ||
+                  (doc.title && doc.title.toLowerCase().includes("sop")));
+
+              // If backend returned structured proposal, SOP, or Business Plan content
               if (doc.content && Array.isArray(doc.content.sections)) {
                 setSections(doc.content.sections);
+              } else if (docIsBusinessPlan) {
+                const inputs = doc.structuredInputs || navState.structuredInputs || {};
+                const bpSecs = [];
+
+                // 1. Executive Summary
+                bpSecs.push({
+                  id: "executive-summary",
+                  title: "Executive Summary",
+                  paragraphs: [
+                    inputs.executiveSummary ||
+                      inputs.summary ||
+                      inputs.goal ||
+                      inputs.description ||
+                      inputs.documentBrief ||
+                      "SolarTech Nigeria designs, installs and maintains commercial solar systems for businesses that need dependable power without relying on the grid. This plan covers the next three years of growth across the Southwest, funded by a combination of retained earnings and a ₦120,000,000 facility.",
+                  ],
+                });
+
+                // 2. Market & Customers
+                bpSecs.push({
+                  id: "market-and-customers",
+                  title: "Market & Customers",
+                  leadText:
+                    inputs.targetMarket ||
+                    "Our customers are commercial operators spending ₦1,500,000 or more a month on diesel — manufacturing, cold chain, hospitality and light industrial parks.",
+                  bullets: [
+                    "Primary market: Lagos, Ogun and Oyo industrial corridors",
+                    "Buying trigger: diesel cost, outage frequency, equipment damage",
+                    "Competitors compete on equipment price; we compete on measured output",
+                  ],
+                });
+
+                // 3. Operations & Strategy
+                bpSecs.push({
+                  id: "operations-and-strategy",
+                  title: "Operations & Strategy",
+                  bullets: [
+                    "Two installation crews expanding to four by Q3 2027",
+                    "Monitoring desk covering every installed system under maintenance",
+                    "Framework supply agreements for panels, inverters and storage",
+                  ],
+                });
+
+                // 4. Financial Overview
+                bpSecs.push({
+                  id: "financial-overview",
+                  title: "Financial Overview",
+                  isFinancialOverview: true,
+                  keyValueRows: [
+                    {
+                      key: "Revenue target — 2026",
+                      value: inputs.revenueTarget
+                        ? `₦${Number(inputs.revenueTarget.toString().replace(/[^\d]/g, "") || 480000000).toLocaleString()}`
+                        : "₦480,000,000",
+                    },
+                    {
+                      key: "Funding required",
+                      value: inputs.fundingRequired
+                        ? `₦${Number(inputs.fundingRequired.toString().replace(/[^\d]/g, "") || 120000000).toLocaleString()}`
+                        : "₦120,000,000",
+                    },
+                    {
+                      key: "Committed from retained earnings",
+                      value: inputs.retainedEarnings || "₦45,000,000",
+                    },
+                    {
+                      key: "Facility sought",
+                      value: inputs.facilitySought || "₦75,000,000",
+                    },
+                  ],
+                  disclosure: {
+                    title: "Figures provided by you",
+                    content:
+                      "Every number in this plan comes from the financial information you entered. Ahiia does not generate projections you did not supply.",
+                  },
+                });
+
+                setSections(bpSecs);
+
+                if (inputs.clientName || inputs.preparedFor || inputs.companyName) {
+                  setCompanyProfile((prev) => ({
+                    ...prev,
+                    preparedFor: inputs.preparedFor || inputs.clientName || prev.preparedFor,
+                    preparedBy: inputs.preparedBy || inputs.companyName || prev.preparedBy,
+                  }));
+                }
+              } else if (docIsSop) {
+                const inputs = doc.structuredInputs || navState.structuredInputs || {};
+                const sopSecs = [];
+
+                // 1. Purpose & Scope
+                sopSecs.push({
+                  id: "purpose-and-scope",
+                  title: "Purpose & Scope",
+                  paragraphs: [
+                    inputs.purpose ||
+                      "This procedure covers the receipt, inspection and recording of all solar equipment arriving at the Ikeja store. It applies to every inbound delivery, including supplier shipments and site returns.",
+                  ],
+                });
+
+                // 2. Responsibilities & Requirements
+                sopSecs.push({
+                  id: "responsibilities-and-requirements",
+                  title: "Responsibilities & Requirements",
+                  keyValueRows: [
+                    { key: "Performed by", value: inputs.performer || "Warehouse Officer" },
+                    { key: "Approved by", value: inputs.approvedBy || "Warehouse Supervisor" },
+                    { key: "When", value: inputs.when || "On every inbound delivery, before offload" },
+                    { key: "Required", value: inputs.tools || "Delivery note, intake log, torch, inspection checklist" },
+                  ],
+                });
+
+                // 3. Procedure Steps
+                const stepList =
+                  Array.isArray(inputs.steps) && inputs.steps.length > 0 && inputs.steps.some((s) => s?.trim())
+                    ? inputs.steps.filter(Boolean)
+                    : [
+                        "Confirm the delivery note against the purchase order before any item leaves the vehicle.",
+                        "Inspect panel and inverter packaging for impact damage, water ingress or broken seals.",
+                        "Count each line item and record quantities in the intake log.",
+                        "Photograph any damage and raise a discrepancy note with the supplier the same day.",
+                        "Move accepted stock to its bin location and update the stock record.",
+                        "Submit the completed intake log to the Supervisor for approval.",
+                      ];
+                sopSecs.push({
+                  id: "procedure",
+                  title: "Procedure",
+                  steps: stepList,
+                });
+
+                // 4. Notes & Exceptions
+                sopSecs.push({
+                  id: "notes-and-exceptions",
+                  title: "Notes & Exceptions",
+                  callouts: [
+                    {
+                      type: "warning",
+                      title: "Do not offload",
+                      content:
+                        inputs.warning ||
+                        "If serial numbers do not match the delivery note, do not offload. Contact the Supervisor before accepting the shipment.",
+                    },
+                    {
+                      type: "info",
+                      title: "Out-of-hours deliveries",
+                      content:
+                        inputs.outOfHours ||
+                        inputs.notes ||
+                        "Deliveries arriving after 18:00 are held sealed in the receiving bay and inspected at 08:00 the next working day.",
+                    },
+                  ],
+                });
+
+                setSections(sopSecs);
+
+                if (inputs.processOwner || inputs.performer) {
+                  setCompanyProfile((prev) => ({
+                    ...prev,
+                    processOwner:
+                      inputs.processOwner ||
+                      (inputs.performer ? `${inputs.performer}, Ikeja store` : prev.processOwner),
+                    issuedBy: inputs.issuedBy || prev.issuedBy,
+                  }));
+                }
               } else if (doc.structuredInputs) {
                 const inputs = doc.structuredInputs;
                 const client =
@@ -301,12 +645,32 @@ const DocumentWorkspace = () => {
         setSections((prev) =>
           prev.map((sec) => {
             if (sec.id === targetSec.id) {
+              if (sec.steps) {
+                return {
+                  ...sec,
+                  steps: [
+                    ...sec.steps,
+                    "Verify secondary seal integrity and record in central log.",
+                  ],
+                };
+              }
+              if (sec.keyValueRows) {
+                return {
+                  ...sec,
+                  keyValueRows: [
+                    ...sec.keyValueRows,
+                    { key: "Review frequency", value: "Quarterly or upon process update" },
+                  ],
+                };
+              }
               if (sec.paragraphs) {
                 return {
                   ...sec,
                   paragraphs: [
                     sec.paragraphs[0],
-                    `Furthermore, this proposal guarantees 99.4% peak uptime, backed by dedicated remote monitoring and proactive system maintenance to maximize power efficiency.`,
+                    isSop
+                      ? "All deviations must be reported immediately to the operations directorate and logged within the digital audit trail."
+                      : `Furthermore, this proposal guarantees 99.4% peak uptime, backed by dedicated remote monitoring and proactive system maintenance to maximize power efficiency.`,
                   ],
                 };
               }
@@ -348,9 +712,9 @@ const DocumentWorkspace = () => {
     }
   };
 
-  // Export handler
+  // Export handler - opens standard centralized export experience
   const handleExport = () => {
-    window.print();
+    setShowExportModal(true);
   };
 
   // Section Editing Handlers
@@ -359,6 +723,9 @@ const DocumentWorkspace = () => {
     setEditingContent({
       paragraphs: sec.paragraphs ? [...sec.paragraphs] : [],
       bullets: sec.bullets ? [...sec.bullets] : [],
+      keyValueRows: sec.keyValueRows ? sec.keyValueRows.map((r) => ({ ...r })) : [],
+      steps: sec.steps ? [...sec.steps] : [],
+      callouts: sec.callouts ? sec.callouts.map((c) => ({ ...c })) : [],
       note: sec.note || "",
     });
   };
@@ -374,6 +741,15 @@ const DocumentWorkspace = () => {
               : {}),
             ...(editingContent.bullets?.length
               ? { bullets: editingContent.bullets }
+              : {}),
+            ...(editingContent.keyValueRows?.length
+              ? { keyValueRows: editingContent.keyValueRows }
+              : {}),
+            ...(editingContent.steps?.length
+              ? { steps: editingContent.steps }
+              : {}),
+            ...(editingContent.callouts?.length
+              ? { callouts: editingContent.callouts }
               : {}),
             ...(editingContent.note !== undefined
               ? { note: editingContent.note }
@@ -397,6 +773,34 @@ const DocumentWorkspace = () => {
     setSections((prev) =>
       prev.map((s) => {
         if (s.id === secId) {
+          if (s.steps) {
+            return {
+              ...s,
+              steps: [...s.steps, "New procedure step to be documented"],
+            };
+          }
+          if (s.keyValueRows) {
+            return {
+              ...s,
+              keyValueRows: [
+                ...s.keyValueRows,
+                { key: "New requirement", value: "Standard compliance" },
+              ],
+            };
+          }
+          if (s.callouts) {
+            return {
+              ...s,
+              callouts: [
+                ...s.callouts,
+                {
+                  type: "info",
+                  title: "General note",
+                  content: "Ensure all records are stored in the digital archive.",
+                },
+              ],
+            };
+          }
           if (s.bullets) {
             return {
               ...s,
@@ -418,6 +822,32 @@ const DocumentWorkspace = () => {
     );
     toast.success("Added new item");
   };
+
+  const docType =
+    navState.docType ||
+    docData?.documentType ||
+    docData?.documentTypeLabel ||
+    (docTitle && docTitle.toLowerCase().includes("business plan")
+      ? "BusinessPlan"
+      : docTitle && docTitle.toLowerCase().includes("sop")
+        ? "SOP"
+        : null);
+
+  const isBusinessPlan =
+    docType === "BusinessPlan" ||
+    docType === "business-plan" ||
+    docType === "businessplan" ||
+    (docTitle && docTitle.toLowerCase().includes("business plan")) ||
+    location.pathname.toLowerCase().includes("business-plan") ||
+    location.search.toLowerCase().includes("business-plan");
+
+  const isSop =
+    !isBusinessPlan &&
+    (docType === "SOP" ||
+      docType === "sop" ||
+      (docTitle && docTitle.toLowerCase().includes("sop")) ||
+      location.pathname.toLowerCase().includes("sop") ||
+      location.search.toLowerCase().includes("sop"));
 
   const companyInitials = companyProfile.companyName
     .split(" ")
@@ -445,20 +875,35 @@ const DocumentWorkspace = () => {
               Documents
             </Link>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-slate-800 font-semibold">{docTitle}</span>
+            <span className="text-slate-800 font-semibold">
+              {isBusinessPlan
+                ? docTitle || "Growth & Funding Business Plan"
+                : isSop
+                  ? navState.parentDocTitle || "Solar Installation Proposal"
+                  : docTitle}
+            </span>
           </div>
 
           {/* Title & Metadata Badges */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               {docTitle}
             </h1>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
-                <RotateCcw className="w-3 h-3 text-slate-400" />
+            <div className="flex items-center gap-2 mt-1">
+              {isBusinessPlan ? (
+                <span className="px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-700">
+                  Business Plan
+                </span>
+              ) : isSop ? (
+                <span className="px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-700">
+                  SOP
+                </span>
+              ) : null}
+              <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
                 Draft · {revisionCount} revisions
               </span>
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
                 <Check className="w-3.5 h-3.5" />
                 {saveStatus}
               </span>
@@ -643,6 +1088,7 @@ const DocumentWorkspace = () => {
 
           {/* Export Button */}
           <button
+            id="document-export-btn"
             type="button"
             onClick={handleExport}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-xs cursor-pointer"
@@ -676,61 +1122,365 @@ const DocumentWorkspace = () => {
             }}
           >
             {/* Document Header Row */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-xs shrink-0"
-                  style={{
-                    backgroundColor: brandKit.secondaryColor || "#2563EB",
-                  }}
-                >
-                  {companyInitials}
+            {isBusinessPlan ? (
+              styleTemplate === "Corporate" ? (
+                /* Corporate Business Plan Header (Matching Reference Design) */
+                <div className="space-y-6">
+                  {/* Blue initials badge */}
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center font-black text-white text-xs shadow-xs shrink-0"
+                    style={{
+                      backgroundColor: brandKit.secondaryColor || "#2563EB",
+                    }}
+                  >
+                    {companyInitials}
+                  </div>
+
+                  {/* Category kicker + Title + Tagline */}
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium tracking-normal mb-1.5">
+                      Business Plan
+                    </p>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase mb-1.5">
+                      {docTitle && docTitle.toLowerCase().includes("business plan")
+                        ? docTitle.toUpperCase()
+                        : `BUSINESS PLAN — ${docTitle.toUpperCase()}`}
+                    </h1>
+                    <p className="text-xs text-slate-500 font-normal">
+                      {brandKit.tagline || "Clean power, built to last"}
+                    </p>
+                  </div>
+
+                  {/* Two-column metadata: Prepared for / Prepared by */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        Prepared for
+                      </p>
+                      <p className="text-sm font-bold text-slate-900">
+                        {companyProfile.preparedFor || "Board and prospective lenders"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        Prepared by
+                      </p>
+                      <p className="text-sm font-bold text-slate-900">
+                        {companyProfile.preparedBy || "SolarTech Nigeria"}
+                      </p>
+                    </div>
+                  </div>
                 </div>
+              ) : styleTemplate === "Creative" ? (
+                /* Creative Business Plan Header */
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-md shrink-0"
+                        style={{
+                          backgroundColor: brandKit.secondaryColor || "#2563EB",
+                        }}
+                      >
+                        {companyInitials}
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-extrabold text-slate-900 leading-tight">
+                          {companyProfile.companyName}
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {brandKit.tagline}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-[#2563EB]">
+                      Business Plan
+                    </span>
+                  </div>
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
+                      {docTitle}
+                    </h1>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-slate-100">
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        Prepared for
+                      </p>
+                      <p className="text-sm font-bold text-slate-900">
+                        {companyProfile.preparedFor}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        Prepared by
+                      </p>
+                      <p className="text-sm font-bold text-slate-900">
+                        {companyProfile.preparedBy}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Minimal Business Plan Header */
+                <div className="space-y-6">
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center font-black text-white text-xs shadow-2xs shrink-0"
+                    style={{
+                      backgroundColor: brandKit.secondaryColor || "#2563EB",
+                    }}
+                  >
+                    {companyInitials}
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-medium text-slate-400 tracking-normal mb-1.5">
+                      Business Plan
+                    </p>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase mb-1.5">
+                      {docTitle}
+                    </h1>
+                    <p className="text-xs text-slate-400 font-normal">
+                      {brandKit.tagline}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
+                    <div>
+                      <p className="text-[11px] font-normal text-slate-400 mb-1">
+                        Prepared for
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                        {companyProfile.preparedFor}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-normal text-slate-400 mb-1">
+                        Prepared by
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                        {companyProfile.preparedBy}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            ) : isSop ? (
+              styleTemplate === "Creative" ? (
+                /* Creative SOP Header */
+                <div className="-m-6 sm:-m-10 lg:-m-14 rounded-t-2xl bg-[#131B4D] p-6 sm:p-10 lg:p-12 mb-8 sm:mb-10 text-white shadow-xs">
+                  {/* Top Brand Mark Row */}
+                  <div className="flex items-center gap-3.5">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-md shrink-0"
+                      style={{
+                        backgroundColor: brandKit.secondaryColor || "#2563EB",
+                      }}
+                    >
+                      {companyInitials}
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-extrabold text-white leading-tight">
+                        {companyProfile.companyName}
+                      </h2>
+                      <p className="text-xs text-slate-300 mt-0.5 font-normal">
+                        {brandKit.tagline}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Title & Category Area */}
+                  <div className="mt-8 mb-6">
+                    <p className="text-[11px] font-semibold text-indigo-200/90 tracking-wide mb-2">
+                      Standard Operating Procedure
+                    </p>
+                    <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
+                      {docTitle}
+                    </h1>
+                  </div>
+
+                  {/* Metadata Grid: Process owner / Issued by */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-white/10">
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-400 mb-1">
+                        Process owner
+                      </p>
+                      <p className="text-sm font-bold text-white">
+                        {companyProfile.processOwner || "Warehouse Supervisor, Ikeja store"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-400 mb-1">
+                        Issued by
+                      </p>
+                      <p className="text-sm font-bold text-white">
+                        {companyProfile.issuedBy || `${companyProfile.companyName} Operations`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : styleTemplate === "Minimal" ? (
+                /* Minimal SOP Header */
+                <div className="space-y-6">
+                  {/* Logo Badge */}
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center font-black text-white text-xs shadow-2xs shrink-0"
+                    style={{
+                      backgroundColor: brandKit.secondaryColor || "#2563EB",
+                    }}
+                  >
+                    {companyInitials}
+                  </div>
+
+                  {/* Title & Tagline Block */}
+                  <div>
+                    <p className="text-[11px] font-medium text-slate-400 tracking-normal mb-1.5">
+                      Standard Operating Procedure
+                    </p>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase mb-1.5">
+                      {docTitle}
+                    </h1>
+                    <p className="text-xs text-slate-400 font-normal">
+                      {brandKit.tagline}
+                    </p>
+                  </div>
+
+                  {/* Metadata Grid: Process owner / Issued by */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
+                    <div>
+                      <p className="text-[11px] font-normal text-slate-400 mb-1">
+                        Process owner
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                        {companyProfile.processOwner || "Warehouse Supervisor, Ikeja store"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-normal text-slate-400 mb-1">
+                        Issued by
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                        {companyProfile.issuedBy || `${companyProfile.companyName} Operations`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Corporate SOP Header */
                 <div>
-                  <h2 className="text-sm font-extrabold text-slate-900 leading-tight">
-                    {companyProfile.companyName}
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {brandKit.tagline}
-                  </p>
+                  <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-200">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-xs shrink-0"
+                        style={{
+                          backgroundColor: brandKit.secondaryColor || "#2563EB",
+                        }}
+                      >
+                        {companyInitials}
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-extrabold text-slate-900 leading-tight">
+                          {companyProfile.companyName}
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {brandKit.tagline}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-500 tracking-tight">
+                      Standard Operating Procedure
+                    </span>
+                  </div>
+
+                  {/* SOP Title */}
+                  <div className="mt-8 mb-6">
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
+                      {docTitle}
+                    </h1>
+                  </div>
+
+                  {/* Metadata Grid: Process owner / Issued by */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-slate-200">
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        Process owner
+                      </p>
+                      <p className="text-sm font-bold text-slate-900">
+                        {companyProfile.processOwner || "Warehouse Supervisor, Ikeja store"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        Issued by
+                      </p>
+                      <p className="text-sm font-bold text-slate-900">
+                        {companyProfile.issuedBy || `${companyProfile.companyName} Operations`}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <span className="text-xs font-semibold text-slate-400 tracking-wide">
-                Business Proposal
-              </span>
-            </div>
+              )
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-xs shrink-0"
+                      style={{
+                        backgroundColor: brandKit.secondaryColor || "#2563EB",
+                      }}
+                    >
+                      {companyInitials}
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-extrabold text-slate-900 leading-tight">
+                        {companyProfile.companyName}
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {brandKit.tagline}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-400 tracking-wide">
+                    Business Proposal
+                  </span>
+                </div>
 
-            {/* Document Title */}
-            <div className="mt-8 mb-6">
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
-                {docTitle}
-              </h1>
-            </div>
+                {/* Document Title */}
+                <div className="mt-8 mb-6">
+                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
+                    {docTitle}
+                  </h1>
+                </div>
 
-            {/* Metadata Grid: Prepared for / Prepared by */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-6 border-b border-slate-200">
-              <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Prepared for
-                </p>
-                <p className="text-sm font-bold text-slate-900">
-                  {companyProfile.preparedFor}
-                </p>
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Prepared by
-                </p>
-                <p className="text-sm font-bold text-slate-900">
-                  {companyProfile.preparedBy}
-                </p>
-              </div>
-            </div>
+                {/* Metadata Grid: Prepared for / Prepared by */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-6 border-b border-slate-200">
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                      Prepared for
+                    </p>
+                    <p className="text-sm font-bold text-slate-900">
+                      {companyProfile.preparedFor}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                      Prepared by
+                    </p>
+                    <p className="text-sm font-bold text-slate-900">
+                      {companyProfile.preparedBy}
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* ================================================================ */}
             {/* SECTIONS                                                         */}
             {/* ================================================================ */}
-            <div className="mt-8 space-y-10">
+            <div
+              className={`mt-8 ${
+                styleTemplate === "Minimal" ? "space-y-8" : "space-y-10"
+              }`}
+            >
               {sections.map((section) => {
                 const isEditing = editingSectionId === section.id;
                 const isSelectedForAi = selectedSectionId === section.id;
@@ -752,77 +1502,90 @@ const DocumentWorkspace = () => {
                     }`}
                   >
                     {/* Section Header */}
-                    <div className="flex items-center justify-between pb-2 mb-2">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
-                          {section.title}
-                        </h3>
-                        {isSelectedForAi && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">
-                            Targeted
-                          </span>
+                    {(!section.isFinancialOverview || isEditing) && (
+                      <div className="flex items-center justify-between pb-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          {styleTemplate === "Creative" && (
+                            <span className="w-1.5 h-4.5 bg-[#2563EB] rounded-full shrink-0" />
+                          )}
+                          <h3
+                            className={`tracking-tight ${
+                              styleTemplate === "Creative"
+                                ? "text-base font-black text-[#2563EB]"
+                                : styleTemplate === "Minimal"
+                                  ? "text-xs sm:text-[13px] font-bold text-slate-900"
+                                  : "text-base font-extrabold text-slate-900"
+                            }`}
+                          >
+                            {section.title}
+                          </h3>
+                          {isSelectedForAi && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">
+                              Targeted
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Section Context Actions */}
+                        {!isPreviewMode && (
+                          <div
+                            className="flex items-center gap-1.5 opacity-90 group-hover/sec:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {isEditing ? (
+                              <button
+                                type="button"
+                                onClick={() => saveEditingSection(section.id)}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-colors cursor-pointer"
+                              >
+                                Save
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => startEditingSection(section)}
+                                className="px-2.5 py-1 rounded-lg border border-slate-200 hover:border-slate-300 text-slate-700 bg-white hover:bg-slate-50 text-[11px] font-bold transition-colors cursor-pointer"
+                              >
+                                Edit
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedSectionId(section.id);
+                                setShowAiAssistant(true);
+                                toast.info(
+                                  `AI Assistant targeting: ${section.title}`
+                                );
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#131B4D] hover:bg-[#1C2666] text-white text-[11px] font-bold transition-colors shadow-xs cursor-pointer"
+                            >
+                              <Sparkles className="w-3 h-3 text-indigo-300" />
+                              <span>AI Edit</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => addSectionItem(section.id)}
+                              className="p-1 rounded-lg border border-slate-200 hover:border-slate-300 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                              title="Add Item"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => deleteSection(section.id)}
+                              className="p-1 rounded-lg border border-slate-200 hover:border-rose-300 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Delete Section"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         )}
                       </div>
-
-                      {/* Section Context Actions */}
-                      {!isPreviewMode && (
-                        <div
-                          className="flex items-center gap-1.5 opacity-90 group-hover/sec:opacity-100 transition-opacity"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {isEditing ? (
-                            <button
-                              type="button"
-                              onClick={() => saveEditingSection(section.id)}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-colors cursor-pointer"
-                            >
-                              Save
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => startEditingSection(section)}
-                              className="px-2.5 py-1 rounded-lg border border-slate-200 hover:border-slate-300 text-slate-700 bg-white hover:bg-slate-50 text-[11px] font-bold transition-colors cursor-pointer"
-                            >
-                              Edit
-                            </button>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedSectionId(section.id);
-                              setShowAiAssistant(true);
-                              toast.info(
-                                `AI Assistant targeting: ${section.title}`
-                              );
-                            }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#131B4D] hover:bg-[#1C2666] text-white text-[11px] font-bold transition-colors shadow-xs cursor-pointer"
-                          >
-                            <Sparkles className="w-3 h-3 text-indigo-300" />
-                            <span>AI Edit</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => addSectionItem(section.id)}
-                            className="p-1 rounded-lg border border-slate-200 hover:border-slate-300 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-                            title="Add Item"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => deleteSection(section.id)}
-                            className="p-1 rounded-lg border border-slate-200 hover:border-rose-300 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                            title="Delete Section"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    )}
 
                     {/* Section Content Area */}
                     {isEditing ? (
@@ -859,6 +1622,85 @@ const DocumentWorkspace = () => {
                             placeholder="One bullet point per line..."
                           />
                         )}
+                        {section.keyValueRows && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-bold text-slate-700">Key-Value Rows:</p>
+                            {editingContent.keyValueRows?.map((row, rIdx) => (
+                              <div key={rIdx} className="flex gap-2">
+                                <input
+                                   type="text"
+                                  value={row.key}
+                                  onChange={(e) => {
+                                    const next = [...(editingContent.keyValueRows || [])];
+                                    next[rIdx] = { ...next[rIdx], key: e.target.value };
+                                    setEditingContent({ ...editingContent, keyValueRows: next });
+                                  }}
+                                  placeholder="Key"
+                                  className="w-1/3 p-2 bg-white border border-slate-200 rounded text-xs"
+                                />
+                                <input
+                                  type="text"
+                                  value={row.value}
+                                  onChange={(e) => {
+                                    const next = [...(editingContent.keyValueRows || [])];
+                                    next[rIdx] = { ...next[rIdx], value: e.target.value };
+                                    setEditingContent({ ...editingContent, keyValueRows: next });
+                                  }}
+                                  placeholder="Value"
+                                  className="flex-1 p-2 bg-white border border-slate-200 rounded text-xs"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {section.steps && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-bold text-slate-700">Procedure Steps (one per line):</p>
+                            <textarea
+                              rows={6}
+                              value={editingContent.steps?.join("\n") || ""}
+                              onChange={(e) =>
+                                setEditingContent({
+                                  ...editingContent,
+                                  steps: e.target.value.split("\n"),
+                                })
+                              }
+                              className="w-full p-3 bg-white border border-slate-200 rounded-lg text-xs text-slate-800"
+                              placeholder="One step per line..."
+                            />
+                          </div>
+                        )}
+                        {section.callouts && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-bold text-slate-700">Callouts:</p>
+                            {editingContent.callouts?.map((c, cIdx) => (
+                              <div key={cIdx} className="p-2 bg-white border border-slate-200 rounded space-y-1">
+                                <input
+                                  type="text"
+                                  value={c.title}
+                                  onChange={(e) => {
+                                    const next = [...(editingContent.callouts || [])];
+                                    next[cIdx] = { ...next[cIdx], title: e.target.value };
+                                    setEditingContent({ ...editingContent, callouts: next });
+                                  }}
+                                  placeholder="Callout title"
+                                  className="w-full p-1.5 border border-slate-200 rounded text-xs font-bold"
+                                />
+                                <textarea
+                                  rows={2}
+                                  value={c.content}
+                                  onChange={(e) => {
+                                    const next = [...(editingContent.callouts || [])];
+                                    next[cIdx] = { ...next[cIdx], content: e.target.value };
+                                    setEditingContent({ ...editingContent, callouts: next });
+                                  }}
+                                  placeholder="Callout content"
+                                  className="w-full p-1.5 border border-slate-200 rounded text-xs"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {section.note !== undefined && (
                           <input
                             type="text"
@@ -874,9 +1716,73 @@ const DocumentWorkspace = () => {
                           />
                         )}
                       </div>
+                    ) : section.isFinancialOverview ? (
+                      /* Dedicated Financial Overview Card (Reference Design) */
+                      <div className="bg-[#EBF3FF] border border-blue-100/60 p-6 rounded-2xl space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-extrabold text-slate-900">
+                            {section.title}
+                          </h3>
+                          {!isPreviewMode && (
+                            <div
+                              className="flex items-center gap-1.5 opacity-90 group-hover/sec:opacity-100 transition-opacity"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => startEditingSection(section)}
+                                className="px-2.5 py-1 rounded-lg border border-blue-200 hover:border-blue-300 text-slate-700 bg-white hover:bg-slate-50 text-[11px] font-bold transition-colors cursor-pointer"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedSectionId(section.id);
+                                  setShowAiAssistant(true);
+                                  toast.info(
+                                    `AI Assistant targeting: ${section.title}`
+                                  );
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#131B4D] hover:bg-[#1C2666] text-white text-[11px] font-bold transition-colors shadow-xs cursor-pointer"
+                              >
+                                <Sparkles className="w-3 h-3 text-indigo-300" />
+                                <span>AI Edit</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-2.5 pt-1">
+                          {section.keyValueRows?.map((row, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between text-xs sm:text-[13px] py-1"
+                            >
+                              <span className="text-slate-700 font-medium">
+                                {row.key}
+                              </span>
+                              <span className="font-extrabold text-slate-900 text-right">
+                                {row.value}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {section.disclosure && (
+                          <div className="bg-white/95 border border-blue-100/80 rounded-xl p-3.5 space-y-1 mt-4 shadow-2xs">
+                            <p className="text-xs font-bold text-blue-900">
+                              {section.disclosure.title}
+                            </p>
+                            <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                              {section.disclosure.content}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <>
-                        {/* Paragraphs (Executive Summary has subtle soft highlight in reference) */}
+                        {/* Paragraphs (Purpose & Scope or Executive Summary) */}
                         {section.paragraphs && (
                           <div
                             className={`space-y-3 ${
@@ -888,7 +1794,7 @@ const DocumentWorkspace = () => {
                             {section.paragraphs.map((p, idx) => (
                               <p
                                 key={idx}
-                                className="text-sm text-slate-700 leading-relaxed font-normal"
+                                className="text-xs sm:text-[13px] text-slate-600 leading-relaxed font-normal"
                               >
                                 {p}
                               </p>
@@ -896,25 +1802,115 @@ const DocumentWorkspace = () => {
                           </div>
                         )}
 
-                        {/* Bullets (Scope of Work) */}
+                        {/* Bullets (Scope of Work / Market & Customers / Operations & Strategy) */}
                         {section.bullets && (
                           <div className="space-y-2">
                             {section.leadText && (
-                              <p className="text-sm text-slate-700 font-medium mb-2">
+                              <p className="text-xs sm:text-[13px] text-slate-700 font-normal mb-2 leading-relaxed">
                                 {section.leadText}
                               </p>
                             )}
-                            <ul className="space-y-1.5 pl-1">
+                            <ul className="space-y-2 pl-0">
                               {section.bullets.map((bullet, idx) => (
                                 <li
                                   key={idx}
-                                  className="flex items-start gap-2.5 text-sm text-slate-700"
+                                  className="flex items-start gap-2.5 text-xs sm:text-[13px] text-slate-700 leading-relaxed"
                                 >
-                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0" />
+                                  {isBusinessPlan ? (
+                                    <span className="text-slate-400 font-bold shrink-0 select-none leading-none mt-0.5">
+                                      —
+                                    </span>
+                                  ) : (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0" />
+                                  )}
                                   <span>{bullet}</span>
                                 </li>
                               ))}
                             </ul>
+                          </div>
+                        )}
+
+                        {/* Key-Value Rows (Responsibilities & Requirements) */}
+                        {section.keyValueRows && (
+                          <div className="space-y-2.5">
+                            {section.keyValueRows.map((row, idx) => (
+                              <div
+                                key={idx}
+                                className={`flex items-center justify-between text-xs sm:text-[13px] py-1 ${
+                                  styleTemplate === "Minimal"
+                                    ? ""
+                                    : "border-b border-slate-50 last:border-b-0"
+                                }`}
+                              >
+                                <span className="text-slate-600 font-normal">
+                                  {row.key}
+                                </span>
+                                <span className="font-bold text-slate-900 text-right">
+                                  {row.value}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Steps with numbered pill badges (Procedure) */}
+                        {section.steps && (
+                          <div className="space-y-3">
+                            {section.steps.map((step, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-start gap-3 text-xs sm:text-[13px]"
+                              >
+                                {styleTemplate === "Minimal" ? (
+                                  <span className="font-mono text-[11px] font-semibold text-slate-700 w-5 shrink-0 mt-0.5">
+                                    {String(idx + 1).padStart(2, "0")}
+                                  </span>
+                                ) : (
+                                  <span className="w-5 h-5 rounded-md bg-[#2563EB] text-white text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">
+                                    {String(idx + 1).padStart(2, "0")}
+                                  </span>
+                                )}
+                                <span className="text-slate-700 leading-relaxed font-normal">
+                                  {step}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Callouts (Notes & Exceptions) */}
+                        {section.callouts && (
+                          <div className="space-y-3.5">
+                            {section.callouts.map((callout, idx) => {
+                              const isWarning = callout.type === "warning";
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`p-3.5 space-y-1 ${
+                                    styleTemplate === "Minimal"
+                                      ? isWarning
+                                        ? "bg-amber-50/40 border border-amber-200/40 rounded-xl"
+                                        : "bg-blue-50/40 border border-blue-200/40 rounded-xl"
+                                      : isWarning
+                                        ? "rounded-r-xl bg-amber-50/50 border-l-2 border-amber-500"
+                                        : "rounded-r-xl bg-blue-50/50 border-l-2 border-blue-500"
+                                  }`}
+                                >
+                                  <p
+                                    className={`text-[11px] font-bold ${
+                                      isWarning
+                                        ? "text-amber-700"
+                                        : "text-blue-700"
+                                    }`}
+                                  >
+                                    {callout.title}
+                                  </p>
+                                  <p className="text-xs text-slate-700 leading-relaxed">
+                                    {callout.content}
+                                  </p>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
 
@@ -979,7 +1975,15 @@ const DocumentWorkspace = () => {
             </div>
 
             {/* Document Footer Row */}
-            <div className="mt-16 pt-6 border-t border-slate-200 flex items-center justify-between text-xs text-slate-400 font-medium">
+            <div
+              className={`mt-14 pt-4 flex items-center justify-between text-[11px] text-slate-400 font-medium ${
+                styleTemplate === "Creative"
+                  ? "border-t-2 border-[#2563EB]/25"
+                  : styleTemplate === "Minimal"
+                    ? "border-t border-slate-100"
+                    : "border-t border-slate-200"
+              }`}
+            >
               <span>{companyProfile.companyName}</span>
               <span>Page 1 of 1</span>
             </div>
@@ -1107,7 +2111,7 @@ const DocumentWorkspace = () => {
               {isAiProcessing && (
                 <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 bg-indigo-50 p-2.5 rounded-xl animate-pulse">
                   <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                  <span>Ahiia AI is optimizing your proposal...</span>
+                  <span>Ahiia AI is optimizing your document...</span>
                 </div>
               )}
             </div>
@@ -1129,8 +2133,8 @@ const DocumentWorkspace = () => {
 
           <span className="font-bold text-slate-800">Brand Kit</span>
 
-          <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
-            <Check className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-[11px]">
+            <Check className="w-3 h-3 stroke-[2.5]" />
             Applied
           </span>
 
@@ -1138,32 +2142,64 @@ const DocumentWorkspace = () => {
           <div className="flex items-center gap-1">
             <span
               className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
-              style={{ backgroundColor: brandKit.primaryColor }}
+              style={{ backgroundColor: brandKit.secondaryColor || "#2563EB" }}
             />
             <span
               className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
-              style={{ backgroundColor: brandKit.secondaryColor }}
+              style={{ backgroundColor: brandKit.primaryColor || "#0F172A" }}
             />
           </div>
 
           <span className="text-slate-500 font-medium">{brandKit.font}</span>
 
           <span className="text-slate-400 font-normal">
-            {styleTemplate} layout
+            {styleTemplate === "Creative" ? "Creative" : `${styleTemplate} layout`}
           </span>
 
           <Link
             to="/dashboard/brand-kit"
-            className="font-bold text-indigo-600 hover:text-indigo-800 ml-1 transition-colors"
+            className="font-bold text-blue-600 hover:text-blue-800 ml-1 transition-colors"
           >
             Edit Brand Kit
           </Link>
         </div>
 
-        <p className="text-[11px] text-slate-400 text-center">
-          Changes save automatically. Accepted AI edits are kept as revisions.
+        <p className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1.5">
+          <RotateCcw className="w-3 h-3 text-slate-400" />
+          <span>Changes save automatically. Accepted AI edits are kept as revisions.</span>
         </p>
       </div>
+
+      {/* Centralized Reusable Export Modal */}
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        documentId={documentId}
+        documentType={
+          isBusinessPlan
+            ? "business-plan"
+            : isSop
+              ? "sop"
+              : (navState.docType || docData?.templateType || "pitch-deck")
+        }
+        documentTypeLabel={
+          isBusinessPlan
+            ? "Business Plan"
+            : isSop
+              ? "SOP"
+              : (navState.docType === "pitch-deck" || (!navState.docType && !isSop && docTitle.toLowerCase().includes("deck"))
+                  ? "Pitch Deck"
+                  : (navState.docType === "sop" ? "SOP" : "Proposal"))
+        }
+        documentTitle={docTitle}
+        currentStyle={styleTemplate}
+        onStyleChange={handleSelectStyle}
+        brandKit={brandKit}
+        companyName={companyProfile.companyName}
+        companyProfile={companyProfile}
+        sections={sections}
+        itemCount={sections.length}
+      />
     </div>
   );
 };

@@ -179,7 +179,12 @@ export const regenerateDocumentSection = async (id, payload) => {
  * @param {Object} payload - { format, options }
  */
 export const exportDocument = async (id, payload) => {
-  const response = await api.post(ENDPOINTS.DOCUMENT_EXPORT(id), payload);
+  const response = await api.post(ENDPOINTS.DOCUMENT_EXPORT(id), payload, {
+    responseType: payload?.responseType || "json",
+  });
+  if (payload?.responseType === "blob" || response.data instanceof Blob) {
+    return response.data;
+  }
   return response.data;
 };
 
