@@ -2,11 +2,11 @@ import { useState } from "react";
 import { HiOutlineEye, HiOutlineEyeSlash, HiArrowLeft } from "react-icons/hi2";
 import { HiSparkles, HiCheck } from "react-icons/hi2";
 import { HiShieldCheck } from "react-icons/hi2";
-import { FcGoogle } from "react-icons/fc";
 import { useNavigate } from "react-router-dom";
 import { register } from "../../services/auth.service";
 import { toast } from "react-toastify";
 import logo from "../../assets/ahiia_icon.svg";
+import GoogleAuthButton from "../components/GoogleAuthButton";
 
 const perks = [
   "Keep your business knowledge in one place",
@@ -226,8 +226,25 @@ const Signup = () => {
                   className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400"
                 />
                 <span>
-                  I accept the terms and understand my business data stays
-                  within my workspace.
+                  I accept the{" "}
+                  <a
+                    href="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-indigo-600 underline"
+                  >
+                    Terms of Service
+                  </a>{" "}
+                  and{" "}
+                  <a
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-indigo-600 underline"
+                  >
+                    Privacy Policy
+                  </a>
+                  , and understand my business data stays within my workspace.
                 </span>
               </label>
 
@@ -246,13 +263,12 @@ const Signup = () => {
               <div className="h-px flex-1 bg-slate-100" />
             </div>
 
-            <button
-              type="button"
-              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 py-3.5 text-sm font-semibold text-slate-700 transition-colors duration-200 hover:bg-slate-50"
-            >
-              <FcGoogle className="h-4 w-4" />
-              Continue with Google
-            </button>
+            <GoogleAuthButton mode="signup" />
+
+            <p className="mt-4 text-center text-xs text-slate-400">
+              Signing up with Google instantly verifies your email and sets up
+              your private workspace.
+            </p>
 
             <p className="mt-6 text-center text-sm text-slate-500">
               Already have an account?{" "}

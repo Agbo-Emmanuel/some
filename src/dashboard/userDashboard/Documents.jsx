@@ -596,9 +596,11 @@ const Documents = () => {
                       type="button"
                       onClick={() =>
                         navigate(
-                          `/dashboard/create-document/${
-                            doc.slug || "business-proposal"
-                          }`,
+                          doc.id
+                            ? `/dashboard/documents/${doc.id}`
+                            : `/dashboard/create-document/${
+                                doc.slug || "business-proposal"
+                              }`,
                         )
                       }
                       className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-200 text-slate-800 text-xs font-bold hover:bg-[#131B4D] hover:text-white hover:border-[#131B4D] active:scale-[0.97] transition-all cursor-pointer"

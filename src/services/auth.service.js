@@ -21,7 +21,22 @@ export const login = async (payload) => {
   return response.data;
 };
 
-export const googleAuth = async (payload) => {
+export const googleAuth = async (payloadOrToken) => {
+  const token =
+    typeof payloadOrToken === "string"
+      ? payloadOrToken
+      : payloadOrToken?.idToken ||
+        payloadOrToken?.id_token ||
+        payloadOrToken?.credential ||
+        payloadOrToken?.token;
+
+  const payload = {
+    idToken: token,
+    id_token: token,
+    credential: token,
+    ...(typeof payloadOrToken === "object" ? payloadOrToken : {}),
+  };
+
   const response = await api.post(ENDPOINTS.GOOGLE_AUTH, payload);
   return response.data;
 };

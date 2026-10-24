@@ -497,9 +497,11 @@ const Overview = () => {
                         type="button"
                         onClick={() =>
                           navigate(
-                            `/dashboard/create-document/${
-                              doc.slug || "business-proposal"
-                            }`
+                            doc.id
+                              ? `/dashboard/documents/${doc.id}`
+                              : `/dashboard/create-document/${
+                                  doc.slug || "business-proposal"
+                                }`
                           )
                         }
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-xs transition-colors cursor-pointer"
@@ -535,9 +537,11 @@ const Overview = () => {
                               onClick={() => {
                                 setActiveMenuDocId(null);
                                 navigate(
-                                  `/dashboard/create-document/${
-                                    doc.slug || "business-proposal"
-                                  }`
+                                  doc.id
+                                    ? `/dashboard/documents/${doc.id}`
+                                    : `/dashboard/create-document/${
+                                        doc.slug || "business-proposal"
+                                      }`
                                 );
                               }}
                               className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-lg flex items-center gap-2 cursor-pointer"
