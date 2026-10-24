@@ -98,10 +98,11 @@ appear on the setup page, the overview page, and the generation modal summary.
 | Document template catalogue | `src/config/documentTemplates.js` | ✅ Real (static config) |
 | Document setup questionnaire + completion gating | `src/dashboard/components/document-setup/**` | ⚠️ Client-side only |
 | Document generation | `src/dashboard/userDashboard/DocumentSetup.jsx` | 🔴 Stubbed (`setTimeout`) |
-| Document library / list / detail | `src/dashboard/userDashboard/Documents.jsx` | 🔴 Hard-coded mock array |
+| Document library / list | `src/dashboard/userDashboard/Documents.jsx` | ✅ Real (calls API: `getDocuments`, `duplicateDocument`, `deleteDocument`) |
+| Document overview / insights | `src/dashboard/userDashboard/Overview.jsx` | ✅ Real (calls API: `getDashboardInsights`, `duplicateDocument`, `deleteDocument`) |
 | Company profile management | `src/dashboard/userDashboard/CompanyProfile.jsx` | 🔴 Mock (no service import) |
 | Brand kit management | `src/dashboard/userDashboard/BrandKit.jsx` | 🔴 Mock (no service import) |
-| Analytics / dashboard insights | `Overview.jsx`, `Analytics.jsx` | 🔴 Hard-coded constants |
+| Analytics | `src/dashboard/userDashboard/Analytics.jsx` | 🔴 Hard-coded constants |
 | Admin portal | `src/dashboard/adminDashboard/**` | 🔴 Mock; most routes don't exist |
 | Transport, auth-token lifecycle, error surfacing | `src/api/api.js` | ✅ Real (the keystone module) |
 
@@ -274,7 +275,7 @@ targeted questionnaire per document type, and get a structured first draft.
 | **Onboarding** | `src/landing/auth/Onboarding.jsx` | Real API integration; 1932-line single component. |
 | **App shell / dashboard chrome** | `src/dashboard/DashboardLanding.jsx`, `dashboard/components/{SideBar,DashboardHeader}.jsx` | Shared by user + admin. |
 | **Document setup** | `src/dashboard/userDashboard/{CreateDocument,DocumentSetup}.jsx` + `dashboard/components/document-setup/**` | Client-side only. |
-| **Document library** | `src/dashboard/userDashboard/Documents.jsx` | Mock array. |
+| **Document library** | `src/dashboard/userDashboard/Documents.jsx` | Real API (getDocuments, duplicateDocument, deleteDocument). |
 | **Settings** | `src/dashboard/userDashboard/settings/**` | Mock; uses a bespoke `<Outlet context>` save protocol. |
 | **Admin** | `src/dashboard/adminDashboard/**` | Mock; 2 of 8 nav routes exist. |
 | **Transport** | `src/api/**` | Real; the most behaviourally important 60 lines in the repo. |
@@ -752,17 +753,11 @@ some/                                  ← repo root (a Vite React SPA)
 
 #### `src/dashboard/userDashboard/Documents.jsx`
 - **Purpose:** Document list with search, type filter, status filter, sort, row menu.
-- **Data:** a **hard-coded 7-item array** named `DOCUMENTS`, with a comment
-  `// ---- Mock data (would come from API) ----`.
-- **Filtering/sorting** is entirely client-side over that array (`useMemo`).
-- **Broken navigation:** "Open" and the row menu navigate to
-  `/dashboard/documents/${doc.id}` — **that route does not exist**, so the click lands
-  on the dashboard's index route (`/dashboard` has no `index`-less match; react-router
-  renders nothing for the unmatched child and the parent layout persists).
-- **Row menu items are inert** — "Rename", "Duplicate", "Download", "Delete" all just
-  close the menu.
-- **`Dropdown` and `RowMenu`** are local components that both implement the same
-  click-outside-to-close pattern with a `document.addEventListener("mousedown", ...)`.
+- **Data:** fetches from API via `getDocuments()`; normalizes response via `mapApiDocument()`. Also supports optimistic insertion of newly created documents from `location.state`.
+- **Filtering/sorting** is client-side over the fetched list (`useMemo`).
+- **Navigation:** "Open" navigates to `/dashboard/create-document/${doc.slug || "business-proposal"}` (continues editing). Route to detail view `/dashboard/documents/:id` does **not** exist.
+- **Actions:** "Duplicate" calls `duplicateDocument(id)`, "Delete" calls `deleteDocument(id)` with confirmation and optimistic removal; both refresh the list on success.
+- **`Dropdown` and `RowMenu`** are local components with click-outside-to-close behavior.
 
 #### `src/dashboard/userDashboard/settings/SettingsLanding.jsx` ★ (custom save protocol)
 - **Purpose:** Settings layout with tab nav and a **single global Save button**.

@@ -25,6 +25,7 @@ import Help from "./dashboard/userDashboard/Help";
 import AdminOverview from "./dashboard/adminDashboard/AdminOverview";
 import { ToastContainer } from "react-toastify";
 import DocumentSetup from "./dashboard/userDashboard/DocumentSetup";
+import DocumentWorkspace from "./dashboard/userDashboard/DocumentWorkspace";
 
 const App = () => {
   return (
@@ -44,6 +45,8 @@ const App = () => {
           <Route index element={<Overview />} />
           <Route path="overview" element={<Overview />} />
           <Route path="documents" element={<Documents />} />
+          <Route path="documents/:documentId" element={<DocumentWorkspace />} />
+          <Route path="document/:documentId" element={<DocumentWorkspace />} />
           <Route path="create-document" element={<CreateDocument />} />
           <Route
             path="create-document/:templateId"

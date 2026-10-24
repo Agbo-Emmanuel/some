@@ -245,12 +245,18 @@ const DocumentSetup = () => {
         result?.document?.id ||
         result?.documentId;
 
-      // Smoothly navigate to documents list with the newly created document details
-      navigate(`/dashboard/documents`, {
+      const targetId = createdId || "new";
+
+      // Smoothly transition immediately to the dedicated document review & edit workspace
+      navigate(`/dashboard/documents/${targetId}`, {
         state: {
+          document: result,
+          newlyCreated: true,
           newlyCreatedId: createdId,
-          newDocTitle: payload.title,
-          newDocType: payload.documentType,
+          docTitle: payload.title,
+          docType: payload.documentType,
+          styleTemplate: payload.styleTemplate,
+          structuredInputs: payload.structuredInputs,
         },
       });
     } catch (err) {

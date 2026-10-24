@@ -6,12 +6,12 @@ import {
   HiArrowLeft,
 } from "react-icons/hi2";
 import { HiOutlineEye, HiOutlineEyeSlash } from "react-icons/hi2";
-import { FcGoogle } from "react-icons/fc";
 import { useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/ahiia_icon.svg";
 import { toast } from "react-toastify";
 import { login } from "../../services/auth.service";
 import { useCookies } from "react-cookie";
+import GoogleAuthButton from "../components/GoogleAuthButton";
 
 const perks = [
   "Access your business knowledge",
@@ -233,13 +233,29 @@ const Login = () => {
               <div className="h-px flex-1 bg-slate-100" />
             </div>
 
-            <button
-              type="button"
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-3.5 text-sm font-semibold text-slate-700 transition-colors duration-200 hover:bg-slate-50"
-            >
-              <FcGoogle className="h-4 w-4" />
-              Continue with Google
-            </button>
+            <GoogleAuthButton mode="signin" />
+
+            <p className="mt-4 text-center text-xs text-slate-400">
+              By continuing, you agree to Ahiia's{" "}
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-slate-600 transition-colors"
+              >
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-slate-600 transition-colors"
+              >
+                Privacy Policy
+              </a>
+              .
+            </p>
 
             <p className="mt-6 text-center text-sm text-slate-500">
               New to Ahiia.Ai?{" "}
