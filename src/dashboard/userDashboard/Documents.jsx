@@ -25,7 +25,9 @@ import {
   X,
   Loader2,
   RefreshCw,
+  Download,
 } from "lucide-react";
+import ExportModal from "../components/ExportModal";
 
 const STATUS_STYLES = {
   Finalized:
@@ -165,7 +167,7 @@ function Dropdown({ label, value, options, onChange }) {
 }
 
 // ---- Row action menu -----------------------------------------------------
-function RowMenu({ doc, onDuplicate, onDelete }) {
+function RowMenu({ doc, onDuplicate, onDelete, onExport }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -194,6 +196,17 @@ function RowMenu({ doc, onDuplicate, onDelete }) {
             : "opacity-0 scale-95 pointer-events-none"
         }`}
       >
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false);
+            onExport(doc);
+          }}
+          className="flex items-center gap-2.5 w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+        >
+          <Download className="w-4 h-4 text-slate-400" />
+          Export
+        </button>
         <button
           type="button"
           onClick={() => {
@@ -233,6 +246,7 @@ const Documents = () => {
   const [statusFilter, setStatusFilter] = useState("All");
   const [sortBy, setSortBy] = useState("Recently updated");
   const [bannerInfo, setBannerInfo] = useState(null);
+  const [exportingDoc, setExportingDoc] = useState(null);
 
   // Fetch documents from API
   const fetchDocuments = async () => {
@@ -612,6 +626,7 @@ const Documents = () => {
                       doc={doc}
                       onDuplicate={handleDuplicate}
                       onDelete={handleDelete}
+                      onExport={(d) => setExportingDoc(d)}
                     />
                   </div>
                 </li>
@@ -620,6 +635,19 @@ const Documents = () => {
           </ul>
         )}
       </div>
+
+      {/* Centralized Export Modal */}
+      {exportingDoc && (
+        <ExportModal
+          isOpen={!!exportingDoc}
+          onClose={() => setExportingDoc(null)}
+          documentId={exportingDoc.id}
+          documentType={exportingDoc.rawType || exportingDoc.slug || exportingDoc.type}
+          documentTypeLabel={exportingDoc.type}
+          documentTitle={exportingDoc.name}
+          itemCount={exportingDoc.revisions || 4}
+        />
+      )}
     </div>
   );
 };
