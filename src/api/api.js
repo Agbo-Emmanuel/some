@@ -1,7 +1,7 @@
 import axios from "axios";
 import { BASE_URL } from "../config/apiConfig";
 import { toast } from "react-toastify";
-import { refreshToken as refreshTokenApi } from "../services/auth.service";
+import { refreshSessionToken, normalizeTokens } from "./tokenRefresh";
 import { Cookies } from "react-cookie";
 
 export const api = axios.create({
@@ -37,14 +37,22 @@ api.interceptors.response.use(
       const storedRefreshToken = cookies.get("refreshToken");
 
       try {
-        const response = await refreshTokenApi({
-          refreshToken: storedRefreshToken,
-        });
-        const newAccessToken = response.data.access_token;
-        console.log("new access token", response);
+        const rawResponse = await refreshSessionToken(storedRefreshToken);
+        const normalized = normalizeTokens(rawResponse);
+        const newAccessToken = normalized.accessToken;
+        const newRefreshToken = normalized.refreshToken;
 
-        // Save the new accessToken to cookies
+        if (!newAccessToken) {
+          throw new Error(
+            "Token refresh succeeded, but no accessToken was returned."
+          );
+        }
+
+        // Save the new accessToken (and rotated refreshToken if present) to cookies
         cookies.set("accessToken", newAccessToken, { path: "/" });
+        if (newRefreshToken) {
+          cookies.set("refreshToken", newRefreshToken, { path: "/" });
+        }
 
         // Retry the original request with the new token
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;

@@ -10,6 +10,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/ahiia_icon.svg";
 import { toast } from "react-toastify";
 import { login } from "../../services/auth.service";
+import { normalizeTokens } from "../../api/tokenRefresh";
 import { useCookies } from "react-cookie";
 import GoogleAuthButton from "../components/GoogleAuthButton";
 
@@ -29,7 +30,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [, setCookie] = useCookies(["accessToken", "refreshToken"]);
+  const [, setCookie] = useCookies(["accessToken", "refreshToken", "userData"]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,23 +40,45 @@ const Login = () => {
         email,
         password,
       };
-      const response = await login(payload);
-      console.log(response);
+      const rawResponse = await login(payload);
+      const normalized = normalizeTokens(rawResponse);
+      if (!normalized.accessToken) {
+        throw new Error(
+          "Login succeeded, but no session token was returned by the server."
+        );
+      }
       toast.success("Logged in successfully");
 
       const cookieOptions = { path: "/" };
 
-      setCookie("accessToken", response?.accessToken, cookieOptions);
-      setCookie("refreshToken", response?.refreshToken, cookieOptions);
+      setCookie("accessToken", normalized.accessToken, cookieOptions);
+      if (normalized.refreshToken) {
+        setCookie("refreshToken", normalized.refreshToken, cookieOptions);
+      }
+      if (normalized.user) {
+        setCookie("userData", normalized.user, cookieOptions);
+      }
 
       if (isNewUser) {
         navigate("/onboarding");
+      } else if (location.state?.from) {
+        navigate(location.state.from, { replace: true });
       } else {
         navigate("/dashboard");
       }
     } catch (error) {
       console.log(error);
-      toast.error(error.message || "Failed to log in");
+      if (
+        error?.response?.status === 403 &&
+        error?.response?.data?.code === "EMAIL_NOT_VERIFIED"
+      ) {
+        navigate("/otp", { state: { email, reason: "unverified" } });
+        toast.info("Please verify your email. We've sent a fresh code.");
+        return;
+      }
+      toast.error(
+        error?.response?.data?.message || error.message || "Failed to log in"
+      );
     } finally {
       setLoading(false);
     }

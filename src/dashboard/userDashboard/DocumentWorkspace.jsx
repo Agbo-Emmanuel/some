@@ -35,6 +35,7 @@ import {
   getDocumentById,
   updateDocument,
   updateDocumentStyle,
+  updateDocumentContent,
   regenerateDocumentSection,
   documentAssistantAction,
 } from "../../services/document.service";
@@ -271,8 +272,16 @@ const DocumentWorkspace = () => {
           ? 2
           : 6
   );
-  const [saveStatus, setSaveStatus] = useState("Saved");
+  const [saveStatus, setSaveStatus] = useState("saved"); // "saved" | "saving" | "unsaved" | "error"
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [lastSavedAt, setLastSavedAt] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const lastSavedSnapshotRef = useRef(null);
+  const autosaveTimerRef = useRef(null);
+  const hasLoadedInitialRef = useRef(false);
   const [styleTemplate, setStyleTemplate] = useState(
     navState.styleTemplate || "Corporate"
   );
@@ -336,6 +345,76 @@ const DocumentWorkspace = () => {
     };
   }, [showStyleMenu]);
 
+  // Persistent document content sync (PUT /api/v1/documents/:id/content)
+  const persistContent = async (
+    currentSections = sections,
+    title = docTitle,
+    style = styleTemplate,
+    isManual = false
+  ) => {
+    if (!documentId || documentId === "new") {
+      if (isManual) {
+        toast.warning("Document does not have a valid server ID to persist.");
+      }
+      return false;
+    }
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+
+    setIsSaving(true);
+    setSaveStatus("saving");
+    setSaveError(null);
+
+    const payload = {
+      content: { sections: currentSections },
+      sections: currentSections,
+      title: title || docTitle,
+      styleTemplate: style || styleTemplate,
+    };
+
+    try {
+      const res = await updateDocumentContent(documentId, payload);
+      const updatedDoc = res?.data || res;
+      if (updatedDoc?.revisionCount !== undefined) {
+        setRevisionCount(updatedDoc.revisionCount);
+      } else if (updatedDoc?.revisions !== undefined) {
+        setRevisionCount(updatedDoc.revisions);
+      }
+
+      lastSavedSnapshotRef.current = JSON.stringify({
+        sections: currentSections,
+        title: title || docTitle,
+        styleTemplate: style || styleTemplate,
+      });
+
+      setIsDirty(false);
+      setSaveStatus("saved");
+      setLastSavedAt(new Date());
+      if (isManual) {
+        toast.success("Document saved successfully");
+      }
+      return true;
+    } catch (err) {
+      console.error("Failed to persist document content:", err);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.detail ||
+        err.message ||
+        "Failed to save document";
+      setSaveError(msg);
+      setSaveStatus("error");
+      if (isManual) {
+        toast.error(msg);
+      }
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Load backend document and profile data
   useEffect(() => {
     let isMounted = true;
@@ -352,7 +431,7 @@ const DocumentWorkspace = () => {
             if (isMounted && doc) {
               setDocData(doc);
               if (doc.title) setDocTitle(doc.title);
-              if (doc.revisionCount) setRevisionCount(doc.revisionCount);
+              if (doc.revisionCount !== undefined) setRevisionCount(doc.revisionCount);
               if (doc.styleTemplate) setStyleTemplate(doc.styleTemplate);
 
               const docTypeVal =
@@ -368,9 +447,66 @@ const DocumentWorkspace = () => {
                   docTypeVal.toLowerCase().includes("sop") ||
                   (doc.title && doc.title.toLowerCase().includes("sop")));
 
-              // If backend returned structured proposal, SOP, or Business Plan content
-              if (doc.content && Array.isArray(doc.content.sections)) {
-                setSections(doc.content.sections);
+              // Inspect existing content in doc.content or doc.sections
+              let loadedSections = null;
+              if (doc.content) {
+                if (Array.isArray(doc.content.sections)) {
+                  loadedSections = doc.content.sections;
+                } else if (Array.isArray(doc.content)) {
+                  loadedSections = doc.content;
+                } else if (typeof doc.content === "string") {
+                  try {
+                    const parsed = JSON.parse(doc.content);
+                    if (Array.isArray(parsed?.sections)) {
+                      loadedSections = parsed.sections;
+                    } else if (Array.isArray(parsed)) {
+                      loadedSections = parsed;
+                    }
+                  } catch {
+                    // ignore JSON parse error
+                  }
+                }
+              } else if (Array.isArray(doc.sections)) {
+                loadedSections = doc.sections;
+              }
+
+              let resolvedSections = loadedSections;
+
+              if (loadedSections && loadedSections.length > 0) {
+                setSections(loadedSections);
+                if (doc.structuredInputs) {
+                  const inputs = doc.structuredInputs;
+                  if (
+                    inputs.clientName ||
+                    inputs.preparedFor ||
+                    inputs.companyName ||
+                    inputs.partyName
+                  ) {
+                    setCompanyProfile((prev) => ({
+                      ...prev,
+                      preparedFor:
+                        inputs.preparedFor ||
+                        inputs.clientName ||
+                        inputs.partyName ||
+                        prev.preparedFor,
+                      preparedBy:
+                        inputs.preparedBy ||
+                        inputs.companyName ||
+                        prev.preparedBy,
+                    }));
+                  }
+                  if (inputs.processOwner || inputs.performer) {
+                    setCompanyProfile((prev) => ({
+                      ...prev,
+                      processOwner:
+                        inputs.processOwner ||
+                        (inputs.performer
+                          ? `${inputs.performer}, Ikeja store`
+                          : prev.processOwner),
+                      issuedBy: inputs.issuedBy || prev.issuedBy,
+                    }));
+                  }
+                }
               } else if (docIsBusinessPlan) {
                 const inputs = doc.structuredInputs || navState.structuredInputs || {};
                 const bpSecs = [];
@@ -448,6 +584,7 @@ const DocumentWorkspace = () => {
                   },
                 });
 
+                resolvedSections = bpSecs;
                 setSections(bpSecs);
 
                 if (inputs.clientName || inputs.preparedFor || inputs.companyName) {
@@ -524,6 +661,7 @@ const DocumentWorkspace = () => {
                   ],
                 });
 
+                resolvedSections = sopSecs;
                 setSections(sopSecs);
 
                 if (inputs.processOwner || inputs.performer) {
@@ -546,14 +684,48 @@ const DocumentWorkspace = () => {
                   ...prev,
                   preparedFor: client,
                 }));
+                resolvedSections = DEFAULT_PROPOSAL_SECTIONS;
+                setSections(DEFAULT_PROPOSAL_SECTIONS);
+              } else {
+                resolvedSections = DEFAULT_PROPOSAL_SECTIONS;
+                setSections(DEFAULT_PROPOSAL_SECTIONS);
               }
+
+              lastSavedSnapshotRef.current = JSON.stringify({
+                sections: resolvedSections || sections,
+                title: doc.title || docTitle,
+                styleTemplate: doc.styleTemplate || styleTemplate,
+              });
+              hasLoadedInitialRef.current = true;
+              setIsDirty(false);
+              setSaveStatus("saved");
             }
           } catch (err) {
             console.warn(
               "Could not load document by ID, using local initialized context:",
               err
             );
+            hasLoadedInitialRef.current = true;
+            lastSavedSnapshotRef.current = JSON.stringify({
+              sections,
+              title: docTitle,
+              styleTemplate,
+            });
+            setSaveStatus("error");
+            setSaveError(
+              err.response?.data?.message ||
+                err.message ||
+                "Failed to load document from server"
+            );
           }
+        } else {
+          hasLoadedInitialRef.current = true;
+          lastSavedSnapshotRef.current = JSON.stringify({
+            sections,
+            title: docTitle,
+            styleTemplate,
+          });
+          setSaveStatus("saved");
         }
 
         // 2. Fetch User Profile
@@ -602,111 +774,183 @@ const DocumentWorkspace = () => {
     };
   }, [documentId]);
 
+  // Debounced Autosave and dirty state tracking
+  useEffect(() => {
+    if (!hasLoadedInitialRef.current) return;
+    if (!documentId || documentId === "new") return;
+
+    const currentSnapshot = JSON.stringify({
+      sections,
+      title: docTitle,
+      styleTemplate,
+    });
+
+    if (
+      lastSavedSnapshotRef.current &&
+      currentSnapshot !== lastSavedSnapshotRef.current
+    ) {
+      setIsDirty(true);
+      setSaveStatus("unsaved");
+
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+
+      autosaveTimerRef.current = setTimeout(() => {
+        persistContent(sections, docTitle, styleTemplate, false);
+      }, 1500);
+    } else if (
+      lastSavedSnapshotRef.current &&
+      currentSnapshot === lastSavedSnapshotRef.current
+    ) {
+      setIsDirty(false);
+      if (saveStatus !== "saving") {
+        setSaveStatus("saved");
+      }
+    }
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, [sections, docTitle, styleTemplate, documentId]);
+
+  // Protect unsaved changes before user navigates or reloads
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isDirty]);
+
   // Handle Style Selection
   const handleSelectStyle = async (newStyle) => {
     setStyleTemplate(newStyle);
     setShowStyleMenu(false);
-    setSaveStatus("Saving...");
 
     try {
       if (documentId && documentId !== "new") {
         await updateDocumentStyle(documentId, { styleTemplate: newStyle });
       }
-      setSaveStatus("Saved");
+      await persistContent(sections, docTitle, newStyle, false);
       toast.success(`Style changed to ${newStyle}`);
-    } catch {
-      setSaveStatus("Saved");
+    } catch (err) {
+      console.error("Failed to update style:", err);
+      toast.error("Failed to update style");
     }
   };
 
-  // Execute AI action (from Quick Action chip or Custom Input)
+  // Execute AI action (from Quick Action chip or Custom Input) with real API responses
   const handleExecuteAi = async (promptText) => {
     const finalPrompt = (promptText || aiAssistantPrompt).trim();
     if (!finalPrompt) return;
 
+    if (!documentId || documentId === "new") {
+      toast.error("Document must be saved to the server before running AI actions.");
+      return;
+    }
+
     setIsAiProcessing(true);
-    setSaveStatus("Saving...");
+    setSaveStatus("saving");
 
     try {
       const targetSec = selectedSectionId
         ? sections.find((s) => s.id === selectedSectionId)
         : null;
 
-      if (targetSec) {
-        // Targeted section regeneration
-        if (documentId && documentId !== "new") {
-          await regenerateDocumentSection(documentId, {
-            sectionKey: targetSec.id,
-            prompt: finalPrompt,
-          });
-        }
+      let updatedSections = [...sections];
 
-        // Intelligent local content enhancement for immediate feedback
-        setSections((prev) =>
-          prev.map((sec) => {
+      if (targetSec) {
+        // Targeted section regeneration via actual backend endpoint
+        const aiRes = await regenerateDocumentSection(documentId, {
+          sectionKey: targetSec.id,
+          sectionId: targetSec.id,
+          prompt: finalPrompt,
+        });
+
+        const aiData = aiRes?.data || aiRes;
+        const regeneratedSec =
+          aiData?.section ||
+          aiData?.data?.section ||
+          (aiData?.id === targetSec.id ? aiData : null);
+
+        if (regeneratedSec) {
+          updatedSections = updatedSections.map((sec) =>
+            sec.id === targetSec.id
+              ? {
+                  ...sec,
+                  ...regeneratedSec,
+                  id: regeneratedSec.id || sec.id,
+                  title: regeneratedSec.title || sec.title,
+                }
+              : sec
+          );
+        } else if (aiData?.content?.sections || Array.isArray(aiData?.sections)) {
+          updatedSections = aiData?.content?.sections || aiData?.sections;
+        } else if (typeof aiData?.content === "string" || typeof aiData?.text === "string") {
+          const newText = aiData?.content || aiData?.text;
+          updatedSections = updatedSections.map((sec) => {
             if (sec.id === targetSec.id) {
-              if (sec.steps) {
-                return {
-                  ...sec,
-                  steps: [
-                    ...sec.steps,
-                    "Verify secondary seal integrity and record in central log.",
-                  ],
-                };
-              }
-              if (sec.keyValueRows) {
-                return {
-                  ...sec,
-                  keyValueRows: [
-                    ...sec.keyValueRows,
-                    { key: "Review frequency", value: "Quarterly or upon process update" },
-                  ],
-                };
-              }
               if (sec.paragraphs) {
-                return {
-                  ...sec,
-                  paragraphs: [
-                    sec.paragraphs[0],
-                    isSop
-                      ? "All deviations must be reported immediately to the operations directorate and logged within the digital audit trail."
-                      : `Furthermore, this proposal guarantees 99.4% peak uptime, backed by dedicated remote monitoring and proactive system maintenance to maximize power efficiency.`,
-                  ],
-                };
+                return { ...sec, paragraphs: [...sec.paragraphs, newText] };
+              }
+              if (sec.steps) {
+                return { ...sec, steps: [...sec.steps, newText] };
               }
               if (sec.bullets) {
-                return {
-                  ...sec,
-                  bullets: [
-                    ...sec.bullets,
-                    "Preventative warranty & quarterly yield verification",
-                  ],
-                };
+                return { ...sec, bullets: [...sec.bullets, newText] };
               }
             }
             return sec;
-          })
-        );
+          });
+        }
 
         toast.success(`Updated "${targetSec.title}" with AI`);
       } else {
-        // Whole document refinement
-        if (documentId && documentId !== "new") {
-          await documentAssistantAction(documentId, {
-            action: "refine_document",
-            prompt: finalPrompt,
-          });
+        // Whole document refinement via actual backend endpoint
+        const aiRes = await documentAssistantAction(documentId, {
+          action: "refine_document",
+          prompt: finalPrompt,
+        });
+
+        const aiData = aiRes?.data || aiRes;
+        const newSecs =
+          aiData?.content?.sections ||
+          aiData?.sections ||
+          aiData?.document?.content?.sections ||
+          (Array.isArray(aiData?.content) ? aiData.content : null);
+
+        if (Array.isArray(newSecs) && newSecs.length > 0) {
+          updatedSections = newSecs;
         }
+
         toast.success("Document updated with AI revisions");
       }
 
+      setSections(updatedSections);
       setRevisionCount((prev) => prev + 1);
-      setSaveStatus("Saved");
       setAiAssistantPrompt("");
+
+      // Persist the actual AI generated updates immediately to document content storage
+      await persistContent(updatedSections, docTitle, styleTemplate, false);
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to apply AI changes");
-      setSaveStatus("Saved");
+      console.error("AI action failed:", err);
+      const errMsg =
+        err.response?.data?.message ||
+        err.response?.data?.detail ||
+        err.message ||
+        "Failed to apply AI changes";
+      toast.error(errMsg);
+      setSaveStatus("saved");
     } finally {
       setIsAiProcessing(false);
     }
@@ -717,7 +961,7 @@ const DocumentWorkspace = () => {
     setShowExportModal(true);
   };
 
-  // Section Editing Handlers
+  // Section Editing Handlers with persistence
   const startEditingSection = (sec) => {
     setEditingSectionId(sec.id);
     setEditingContent({
@@ -730,96 +974,98 @@ const DocumentWorkspace = () => {
     });
   };
 
-  const saveEditingSection = (secId) => {
-    setSections((prev) =>
-      prev.map((sec) => {
-        if (sec.id === secId) {
+  const saveEditingSection = async (secId) => {
+    const updatedSections = sections.map((sec) => {
+      if (sec.id === secId) {
+        return {
+          ...sec,
+          ...(editingContent.paragraphs?.length
+            ? { paragraphs: editingContent.paragraphs }
+            : {}),
+          ...(editingContent.bullets?.length
+            ? { bullets: editingContent.bullets }
+            : {}),
+          ...(editingContent.keyValueRows?.length
+            ? { keyValueRows: editingContent.keyValueRows }
+            : {}),
+          ...(editingContent.steps?.length
+            ? { steps: editingContent.steps }
+            : {}),
+          ...(editingContent.callouts?.length
+            ? { callouts: editingContent.callouts }
+            : {}),
+          ...(editingContent.note !== undefined
+            ? { note: editingContent.note }
+            : {}),
+        };
+      }
+      return sec;
+    });
+
+    setSections(updatedSections);
+    setEditingSectionId(null);
+    await persistContent(updatedSections, docTitle, styleTemplate, true);
+  };
+
+  const deleteSection = async (secId) => {
+    const updatedSections = sections.filter((s) => s.id !== secId);
+    setSections(updatedSections);
+    toast.info("Section removed");
+    await persistContent(updatedSections, docTitle, styleTemplate, true);
+  };
+
+  const addSectionItem = async (secId) => {
+    const updatedSections = sections.map((s) => {
+      if (s.id === secId) {
+        if (s.steps) {
           return {
-            ...sec,
-            ...(editingContent.paragraphs?.length
-              ? { paragraphs: editingContent.paragraphs }
-              : {}),
-            ...(editingContent.bullets?.length
-              ? { bullets: editingContent.bullets }
-              : {}),
-            ...(editingContent.keyValueRows?.length
-              ? { keyValueRows: editingContent.keyValueRows }
-              : {}),
-            ...(editingContent.steps?.length
-              ? { steps: editingContent.steps }
-              : {}),
-            ...(editingContent.callouts?.length
-              ? { callouts: editingContent.callouts }
-              : {}),
-            ...(editingContent.note !== undefined
-              ? { note: editingContent.note }
-              : {}),
+            ...s,
+            steps: [...s.steps, "New procedure step to be documented"],
           };
         }
-        return sec;
-      })
-    );
-    setEditingSectionId(null);
-    setSaveStatus("Saved");
-    toast.success("Section changes saved");
-  };
-
-  const deleteSection = (secId) => {
-    setSections((prev) => prev.filter((s) => s.id !== secId));
-    toast.info("Section removed");
-  };
-
-  const addSectionItem = (secId) => {
-    setSections((prev) =>
-      prev.map((s) => {
-        if (s.id === secId) {
-          if (s.steps) {
-            return {
-              ...s,
-              steps: [...s.steps, "New procedure step to be documented"],
-            };
-          }
-          if (s.keyValueRows) {
-            return {
-              ...s,
-              keyValueRows: [
-                ...s.keyValueRows,
-                { key: "New requirement", value: "Standard compliance" },
-              ],
-            };
-          }
-          if (s.callouts) {
-            return {
-              ...s,
-              callouts: [
-                ...s.callouts,
-                {
-                  type: "info",
-                  title: "General note",
-                  content: "Ensure all records are stored in the digital archive.",
-                },
-              ],
-            };
-          }
-          if (s.bullets) {
-            return {
-              ...s,
-              bullets: [...s.bullets, "New deliverable item"],
-            };
-          }
-          if (s.tableRows && s.id === "pricing") {
-            return {
-              ...s,
-              tableRows: [
-                ...s.tableRows,
-                { item: "Additional Service", cost: "₦1,000,000" },
-              ],
-            };
-          }
+        if (s.keyValueRows) {
+          return {
+            ...s,
+            keyValueRows: [
+              ...s.keyValueRows,
+              { key: "New requirement", value: "Standard compliance" },
+            ],
+          };
         }
-        return s;
-      })
-    );
+        if (s.callouts) {
+          return {
+            ...s,
+            callouts: [
+              ...s.callouts,
+              {
+                type: "info",
+                title: "General note",
+                content: "Ensure all records are stored in the digital archive.",
+              },
+            ],
+          };
+        }
+        if (s.bullets) {
+          return {
+            ...s,
+            bullets: [...s.bullets, "New deliverable item"],
+          };
+        }
+        if (s.tableRows && s.id === "pricing") {
+          return {
+            ...s,
+            tableRows: [
+              ...s.tableRows,
+              { item: "Additional Service", cost: "₦1,000,000" },
+            ],
+          };
+        }
+      }
+      return s;
+    });
+
+    setSections(updatedSections);
+    await persistContent(updatedSections, docTitle, styleTemplate, false);
     toast.success("Added new item");
   };
 
@@ -903,10 +1149,55 @@ const DocumentWorkspace = () => {
                 <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
                 Draft · {revisionCount} revisions
               </span>
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                <Check className="w-3.5 h-3.5" />
-                {saveStatus}
-              </span>
+              {saveStatus === "saving" && (
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 animate-pulse"
+                  title="Saving changes..."
+                >
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Saving...
+                </span>
+              )}
+              {saveStatus === "unsaved" && (
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600"
+                  title="Unsaved changes detected. Autosaving shortly..."
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                  Unsaved changes
+                </span>
+              )}
+              {saveStatus === "saved" && (
+                <span
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600"
+                  title={
+                    lastSavedAt
+                      ? `Saved at ${lastSavedAt.toLocaleTimeString()}`
+                      : "All changes saved"
+                  }
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Saved
+                </span>
+              )}
+              {saveStatus === "error" && (
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600"
+                  title={saveError || "Failed to save"}
+                >
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>Save failed</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      persistContent(sections, docTitle, styleTemplate, true)
+                    }
+                    className="underline text-[11px] hover:text-rose-700 ml-1 cursor-pointer font-bold"
+                  >
+                    Retry
+                  </button>
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -1070,6 +1361,31 @@ const DocumentWorkspace = () => {
           >
             <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
             <span>AI Assistant</span>
+          </button>
+
+          {/* Manual Save Button */}
+          <button
+            id="document-manual-save-btn"
+            type="button"
+            disabled={isSaving || (!isDirty && saveStatus === "saved")}
+            onClick={() =>
+              persistContent(sections, docTitle, styleTemplate, true)
+            }
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shadow-xs cursor-pointer ${
+              isDirty || saveStatus === "error"
+                ? "bg-blue-600 hover:bg-blue-700 border-blue-600 text-white shadow-blue-500/20 shadow-md"
+                : "border-slate-200 bg-white text-slate-400 cursor-not-allowed opacity-60"
+            }`}
+            title={isDirty ? "Save changes now" : "All changes saved"}
+          >
+            {isSaving ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+            ) : (
+              <Check
+                className={`w-3.5 h-3.5 ${isDirty ? "text-white" : "text-slate-400"}`}
+              />
+            )}
+            <span>{isSaving ? "Saving..." : isDirty ? "Save Changes" : "Saved"}</span>
           </button>
 
           {/* Preview Toggle Button */}

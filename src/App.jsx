@@ -26,6 +26,7 @@ import AdminOverview from "./dashboard/adminDashboard/AdminOverview";
 import { ToastContainer } from "react-toastify";
 import DocumentSetup from "./dashboard/userDashboard/DocumentSetup";
 import DocumentWorkspace from "./dashboard/userDashboard/DocumentWorkspace";
+import AuthGuard from "./components/AuthGuard";
 
 const App = () => {
   return (
@@ -41,7 +42,14 @@ const App = () => {
         <Route path="/onboarding" element={<Onboarding />} />
 
         {/* User Dashboard */}
-        <Route path="/dashboard" element={<DashboardLanding role="user" />}>
+        <Route
+          path="/dashboard"
+          element={
+            <AuthGuard>
+              <DashboardLanding role="user" />
+            </AuthGuard>
+          }
+        >
           <Route index element={<Overview />} />
           <Route path="overview" element={<Overview />} />
           <Route path="documents" element={<Documents />} />
@@ -68,7 +76,14 @@ const App = () => {
         </Route>
 
         {/* Admin Dashboard using the exact same structure */}
-        <Route path="/admin" element={<DashboardLanding role="admin" />}>
+        <Route
+          path="/admin"
+          element={
+            <AuthGuard role="Admin">
+              <DashboardLanding role="admin" />
+            </AuthGuard>
+          }
+        >
           <Route index element={<AdminOverview />} />
           <Route path="overview" element={<AdminOverview />} />
         </Route>

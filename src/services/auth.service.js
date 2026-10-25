@@ -1,5 +1,6 @@
 import { api } from "../api/api";
 import { ENDPOINTS } from "../api/endpoints";
+import { refreshSessionToken } from "../api/tokenRefresh";
 
 export const register = async (payload) => {
   const response = await api.post(ENDPOINTS.REGISTER, payload);
@@ -51,8 +52,7 @@ export const logout = async (clearCookies) => {
 };
 
 export const refreshToken = async (payload) => {
-  const response = await api.post(ENDPOINTS.REFRESH_TOKEN, payload);
-  return response.data;
+  return refreshSessionToken(payload);
 };
 
 export const forgotPassword = async (payload) => {

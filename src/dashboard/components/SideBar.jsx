@@ -197,12 +197,12 @@ const SideBar = ({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                profile.initials || "LT"
+                profile.initials || "YC"
               )}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-slate-900 truncate group-hover:text-indigo-950 transition-colors">
-                {profile.company || profile.name || "lexis tech"}
+                {profile.company || profile.name || "Your Company"}
               </p>
               <p className="text-xs text-slate-400 truncate">
                 {profile.industry || "Financial services"}

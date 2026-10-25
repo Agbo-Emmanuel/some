@@ -233,34 +233,24 @@ const DocumentSetup = () => {
     const payload = buildPayload();
 
     try {
-      let result = null;
-      try {
-        result = await createDocument(payload);
-      } catch (apiErr) {
-        console.warn(
-          "Backend createDocument unavailable or returned error, continuing with local document workspace:",
-          apiErr
+      const result = await createDocument(payload);
+
+      const createdId =
+        result?.id ||
+        result?.data?.id ||
+        result?.document?.id ||
+        result?.documentId;
+
+      if (!createdId) {
+        throw new Error(
+          "Document created, but no valid document ID was returned by the server."
         );
-        result = {
-          id: `bp_${Date.now()}`,
-          title: payload.title,
-          documentType: payload.documentType,
-          styleTemplate: payload.styleTemplate,
-          structuredInputs: payload.structuredInputs,
-        };
       }
 
       toast.success(
         `"${payload.title}" created successfully! Generating document...`,
       );
       setShowModal(false);
-
-      const createdId =
-        result?.id ||
-        result?.data?.id ||
-        result?.document?.id ||
-        result?.documentId ||
-        "new";
 
       // Smoothly transition immediately to the dedicated document review & edit workspace
       navigate(`/dashboard/documents/${createdId}`, {
@@ -300,13 +290,12 @@ const DocumentSetup = () => {
       });
       toast.success("Draft saved successfully!");
     } catch (err) {
-      console.warn("API draft save failed, saved locally:", err);
-      const errMsg = extractApiErrorMessage(err, null);
-      if (errMsg) {
-        toast.info(`Draft saved to your workspace (${errMsg}).`);
-      } else {
-        toast.info("Draft saved to your workspace.");
-      }
+      console.error("API draft save failed:", err);
+      const errMsg = extractApiErrorMessage(
+        err,
+        "Failed to save draft to workspace."
+      );
+      toast.error(errMsg);
     } finally {
       setIsSavingDraft(false);
     }

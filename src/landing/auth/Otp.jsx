@@ -77,7 +77,7 @@ const Otp = () => {
     focusInput(Math.min(pasted.length, CODE_LENGTH) - 1);
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (!email) {
       return;
     }
@@ -85,7 +85,7 @@ const Otp = () => {
       email: email,
     };
     try {
-      const response = resendOtp(payload);
+      const response = await resendOtp(payload);
       setSecondsLeft(RESEND_SECONDS);
       console.log(response);
       toast.success("OTP resent successfully");

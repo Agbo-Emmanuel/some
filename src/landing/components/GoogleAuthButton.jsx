@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useCookies } from "react-cookie";
 import { toast } from "react-toastify";
 import { googleAuth } from "../../services/auth.service";
+import { normalizeTokens } from "../../api/tokenRefresh";
 import { HiExclamationTriangle, HiXMark } from "react-icons/hi2";
 
 /**
@@ -102,23 +103,10 @@ const GoogleAuthButton = ({
       }
 
       // Extract access and refresh tokens from backend response
-      const accessToken =
-        response?.accessToken ||
-        response?.access_token ||
-        response?.data?.accessToken ||
-        response?.data?.access_token;
-
-      const refreshToken =
-        response?.refreshToken ||
-        response?.refresh_token ||
-        response?.data?.refreshToken ||
-        response?.data?.refresh_token;
-
-      const user =
-        response?.user ||
-        response?.userData ||
-        response?.data?.user ||
-        response?.data?.userData;
+      const normalized = normalizeTokens(response);
+      const accessToken = normalized.accessToken;
+      const refreshToken = normalized.refreshToken;
+      const user = normalized.user;
 
       const isNewUser =
         response?.isNewUser ||
