@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   HiSparkles,
   HiCheck,
@@ -7,6 +7,8 @@ import {
 } from "react-icons/hi2";
 import { HiOutlineKey, HiOutlineMail, HiOutlineRefresh } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { forgotPassword } from "../../services/auth.service";
 import logo from "../../assets/ahiia_icon.svg";
 
 const perks = [
@@ -19,15 +21,37 @@ const ForgotPassword = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("send reset link to:", email);
-    setSent(true);
+    if (!email) return;
+    setLoading(true);
+    try {
+      await forgotPassword({ email: email.trim() });
+      setSent(true);
+      toast.success("Password reset link sent to your email!");
+    } catch (err) {
+      console.error("Failed to send reset link:", err);
+      toast.error(
+        err.response?.data?.message || "Failed to send password reset link"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleResend = () => {
-    console.log("resend reset link to:", email);
+  const handleResend = async () => {
+    if (!email) return;
+    try {
+      await forgotPassword({ email: email.trim() });
+      toast.success("Reset link resent successfully!");
+    } catch (err) {
+      console.error("Failed to resend reset link:", err);
+      toast.error(
+        err.response?.data?.message || "Failed to resend password reset link"
+      );
+    }
   };
 
   const handleUseDifferentEmail = () => {
@@ -140,9 +164,10 @@ const ForgotPassword = () => {
 
                   <button
                     type="submit"
-                    className="w-full rounded-xl bg-[#141B4D] py-3.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#1E2A78] active:scale-[0.99]"
+                    disabled={loading}
+                    className="w-full rounded-xl bg-[#141B4D] py-3.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#1E2A78] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Send reset link
+                    {loading ? "Sending reset link..." : "Send reset link"}
                   </button>
                 </form>
 

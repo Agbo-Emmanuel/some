@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   CheckCircle2,
   UploadCloud,
@@ -8,6 +8,10 @@ import {
   Loader2,
   Check,
 } from "lucide-react";
+import { toast } from "react-toastify";
+import { getBrandKit, updateBrandKit } from "../../services/brandKit.service";
+import { getUserProfile } from "../../services/profile.service";
+import { uploadImageToCloudinary } from "../../utils/cloudinary";
 
 const FONTS = ["Montserrat", "Inter", "Poppins", "Lora", "Source Sans Pro"];
 const PLATFORMS = [
@@ -39,29 +43,107 @@ const initials = (name) =>
     .toUpperCase();
 
 const BrandKit = () => {
-  const companyName = "SolarTech Nigeria";
-
-  const [logoName, setLogoName] = useState("solartech-logo.svg");
+  const [companyName, setCompanyName] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoName, setLogoName] = useState("brand-logo.svg");
   const [primaryColor, setPrimaryColor] = useState("#2563EB");
   const [secondaryColor, setSecondaryColor] = useState("#131C52");
   const [font, setFont] = useState("Montserrat");
   const [tagline, setTagline] = useState("Clean power, built to last");
   const [socialLinks, setSocialLinks] = useState([
-    { platform: "LinkedIn", url: "https://linkedin.com/company/solartech-ng" },
+    { platform: "LinkedIn", url: "" },
   ]);
 
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    let isMounted = true;
+    const loadData = async () => {
+      try {
+        const [brandRes, profileRes] = await Promise.allSettled([
+          getBrandKit(),
+          getUserProfile(),
+        ]);
+        if (isMounted) {
+          if (brandRes.status === "fulfilled" && brandRes.value) {
+            const data = brandRes.value.data || brandRes.value;
+            if (data.primaryColor) setPrimaryColor(data.primaryColor);
+            if (data.secondaryColor) setSecondaryColor(data.secondaryColor);
+            if (data.font) setFont(data.font);
+            if (data.tagline) setTagline(data.tagline);
+            if (data.logoUrl) {
+              setLogoUrl(data.logoUrl);
+              const parts = data.logoUrl.split("/");
+              setLogoName(parts[parts.length - 1] || "brand-logo");
+            }
+            if (Array.isArray(data.socialLinks)) {
+              setSocialLinks(data.socialLinks);
+            } else if (typeof data.socialLinks === "string") {
+              try {
+                const parsed = JSON.parse(data.socialLinks);
+                if (Array.isArray(parsed)) {
+                  setSocialLinks(parsed);
+                } else if (typeof parsed === "object" && parsed !== null) {
+                  const mapped = Object.entries(parsed).map(
+                    ([platform, url]) => ({
+                      platform,
+                      url: String(url),
+                    })
+                  );
+                  if (mapped.length > 0) setSocialLinks(mapped);
+                }
+              } catch {
+                // ignore
+              }
+            } else if (
+              typeof data.socialLinks === "object" &&
+              data.socialLinks !== null
+            ) {
+              const mapped = Object.entries(data.socialLinks).map(
+                ([platform, url]) => ({
+                  platform,
+                  url: String(url),
+                })
+              );
+              if (mapped.length > 0) setSocialLinks(mapped);
+            }
+          }
+
+          if (profileRes.status === "fulfilled" && profileRes.value) {
+            const pData = profileRes.value.data || profileRes.value;
+            if (pData?.companyName) {
+              setCompanyName(pData.companyName);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load brand kit:", err);
+      }
+    };
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const markDirty = () => {
     if (!dirty) setDirty(true);
   };
 
-  const handleLogoUpload = (e) => {
+  const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
       setLogoName(file.name);
-      markDirty();
+      try {
+        const url = await uploadImageToCloudinary(file);
+        setLogoUrl(url);
+        markDirty();
+        toast.success("Logo uploaded!");
+      } catch (err) {
+        console.error("Logo upload failed:", err);
+        toast.error("Failed to upload logo image");
+      }
     }
   };
 
@@ -77,20 +159,64 @@ const BrandKit = () => {
 
   const handleSocialChange = (idx, field, value) => {
     setSocialLinks((prev) =>
-      prev.map((s, i) => (i === idx ? { ...s, [field]: value } : s)),
+      prev.map((s, i) => (i === idx ? { ...s, [field]: value } : s))
     );
     markDirty();
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+    try {
+      const validLinks = socialLinks
+        .filter((s) => s.url && s.url.trim().length > 0)
+        .map((s) => ({
+          platform: s.platform || "Other",
+          url: s.url.trim(),
+        }));
+
+      const basePayload = {
+        primaryColor,
+        secondaryColor,
+        font,
+        tagline,
+        logoUrl: logoUrl || undefined,
+      };
+
+      try {
+        // Send as a JSON Array
+        await updateBrandKit({
+          ...basePayload,
+          socialLinks: validLinks,
+        });
+      } catch (err) {
+        // If rejected specifically due to INVALID_SOCIAL_LINKS, retry as a JSON Object map
+        if (err?.response?.data?.code === "INVALID_SOCIAL_LINKS") {
+          const linksObject = Object.fromEntries(
+            validLinks.map((item) => [item.platform, item.url])
+          );
+          await updateBrandKit({
+            ...basePayload,
+            socialLinks: linksObject,
+          });
+        } else {
+          throw err;
+        }
+      }
+
       setDirty(false);
-    }, 800);
+      toast.success("Brand Kit saved successfully!");
+    } catch (err) {
+      console.error("Failed to save brand kit:", err);
+      toast.error(err.response?.data?.message || "Failed to save Brand Kit");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const previewInitials = useMemo(() => initials(companyName), [companyName]);
+  const previewInitials = useMemo(
+    () => initials(companyName || "Your Company"),
+    [companyName],
+  );
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -383,7 +509,7 @@ const BrandKit = () => {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold text-white truncate">
-                  {companyName}
+                  {companyName || "Your Company"}
                 </p>
                 <p className="text-xs text-white/70 truncate">
                   {tagline || "Your tagline appears here"}

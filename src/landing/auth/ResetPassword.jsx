@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   HiSparkles,
   HiCheck,
@@ -7,7 +7,9 @@ import {
   HiOutlineEyeSlash,
 } from "react-icons/hi2";
 import { HiOutlineLockClosed, HiOutlineEye, HiX } from "react-icons/hi";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import { resetPassword } from "../../services/auth.service";
 import logo from "../../assets/ahiia_icon.svg";
 
 const perks = [
@@ -23,14 +25,17 @@ const changes = [
 ];
 
 const ResetPassword = () => {
-  const email = "Useremail@gmail.com";
   const navigate = useNavigate();
+  const { token: routeToken } = useParams();
+  const [searchParams] = useSearchParams();
+  const token = routeToken || searchParams.get("token") || "";
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [updated, setUpdated] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const requirements = useMemo(() => {
     const hasLength = password.length >= 8;
@@ -47,14 +52,30 @@ const ResetPassword = () => {
   const metCount = requirements.filter((r) => r.met).length;
   const passwordsMatch =
     confirmPassword.length > 0 && confirmPassword === password;
-  const canSubmit = metCount === requirements.length && passwordsMatch;
+  const canSubmit =
+    metCount === requirements.length && passwordsMatch && !loading;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canSubmit) return;
-    console.log("resetting password for:", email);
-    // simulate the reset-password API call succeeding
-    setUpdated(true);
+    if (!token) {
+      toast.error("Invalid or missing reset token. Please request a new link.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await resetPassword({ token, newPassword: password });
+      setUpdated(true);
+      toast.success("Password reset successfully!");
+    } catch (err) {
+      console.error("Failed to reset password:", err);
+      toast.error(
+        err.response?.data?.message ||
+          "Failed to reset password. The link may have expired."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -140,9 +161,13 @@ const ResetPassword = () => {
                   Set a new password
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Set a new password
+                  Enter and confirm your new password below.
                 </p>
-                <p className="text-sm font-semibold text-indigo-600">{email}</p>
+                {searchParams.get("email") && (
+                  <p className="text-sm font-semibold text-indigo-600">
+                    {searchParams.get("email")}
+                  </p>
+                )}
 
                 <form onSubmit={handleSubmit} className="mt-6 space-y-5">
                   {/* new password */}

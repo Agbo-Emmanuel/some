@@ -1,16 +1,51 @@
 import React, { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { toast } from "react-toastify";
+import { getCurrentUser, updateCurrentUser } from "../../../services/user.service";
 
 const AccountSettings = () => {
   const { markDirty, registerSave } = useOutletContext();
 
   const [name, setName] = useState("");
-  const [email] = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchUser = async () => {
+      try {
+        setLoading(true);
+        const res = await getCurrentUser();
+        const data = res?.data || res;
+        if (isMounted && data) {
+          setName(data.fullName || data.name || "");
+          setEmail(data.email || "");
+        }
+      } catch (err) {
+        console.error("Failed to load user account details:", err);
+        toast.error("Could not load account details");
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchUser();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     registerSave(async () => {
-      await new Promise((res) => setTimeout(res, 700));
-      // Persist `name` to the API here.
+      try {
+        await updateCurrentUser({ fullName: name.trim() });
+        toast.success("Account information updated successfully!");
+      } catch (err) {
+        console.error("Failed to update account information:", err);
+        toast.error(
+          err.response?.data?.message || "Failed to update account information"
+        );
+        throw err;
+      }
     });
   }, [registerSave, name]);
 
@@ -33,12 +68,13 @@ const AccountSettings = () => {
           <input
             type="text"
             value={name}
+            disabled={loading}
             onChange={(e) => {
               setName(e.target.value);
               markDirty();
             }}
             placeholder="Chidi Okafor"
-            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#131B4D]/15 focus:border-[#131B4D]/40 transition-shadow"
+            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#131B4D]/15 focus:border-[#131B4D]/40 transition-shadow disabled:opacity-60"
           />
         </div>
 
@@ -50,7 +86,7 @@ const AccountSettings = () => {
             type="email"
             value={email}
             readOnly
-            placeholder="Yourcompanyemail.com"
+            placeholder="yourcompanyemail@example.com"
             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-500 placeholder:text-slate-400 cursor-not-allowed"
           />
           <p className="text-xs text-slate-400 mt-1.5">
