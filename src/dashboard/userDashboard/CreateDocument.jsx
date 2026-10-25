@@ -149,7 +149,7 @@ const CreateDocument = () => {
         <div className="flex items-center gap-4 shrink-0">
           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
             <Building2 className="w-3.5 h-3.5 text-blue-500" />
-            {companyName || "lexis tech"}
+            {companyName || "Your Company"}
           </span>
           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
             <Palette className="w-3.5 h-3.5 text-blue-500" />

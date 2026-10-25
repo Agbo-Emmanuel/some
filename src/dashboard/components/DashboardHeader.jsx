@@ -97,7 +97,7 @@ const DashboardHeader = ({
     profileData?.companyName ||
     profile?.company ||
     profile?.companyName ||
-    "lexis tech";
+    "Your Company";
   const logoUrl = profileData?.logoUrl || profile?.logoUrl;
   const industry = profileData?.industry || profile?.industry;
   const completeness =
@@ -111,7 +111,7 @@ const DashboardHeader = ({
         .join("")
         .toUpperCase()
         .slice(0, 2)
-    : "LT";
+    : "YC";
 
   // Close menus when clicking outside
   useEffect(() => {

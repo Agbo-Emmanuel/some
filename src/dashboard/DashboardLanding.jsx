@@ -14,6 +14,7 @@ import {
   Settings,
   HelpCircle,
 } from "lucide-react";
+import { getUserProfile } from "../services/profile.service";
 export const ADMIN_NAV_ITEMS = [
   {
     name: "Dashboard",
@@ -76,7 +77,7 @@ const DashboardLanding = ({
         setUserProfile(data);
       }
     } catch (err) {
-      console.warn("Could not load user profile in DashboardLanding:", err);
+      console.error("DashboardLanding.fetchProfile", err);
     }
   };
 
@@ -110,7 +111,7 @@ const DashboardLanding = ({
       ? ADMIN_BOTTOM_NAV_ITEMS
       : DEFAULT_USER_BOTTOM_NAV_ITEMS);
 
-  const companyName = userProfile?.companyName || "lexis tech";
+  const companyName = userProfile?.companyName || "";
   const initials = companyName
     ? companyName
         .split(" ")
@@ -119,7 +120,7 @@ const DashboardLanding = ({
         .join("")
         .toUpperCase()
         .slice(0, 2)
-    : "LT";
+    : "YC";
 
   const activeProfile =
     profile ||
@@ -130,8 +131,8 @@ const DashboardLanding = ({
           initials: "AD",
         }
       : {
-          name: companyName,
-          company: companyName,
+          name: companyName || "Your Company",
+          company: companyName || "Your Company",
           industry: userProfile?.industry || "Financial services",
           logoUrl: userProfile?.logoUrl || null,
           initials,

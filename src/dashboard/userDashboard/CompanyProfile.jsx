@@ -15,6 +15,7 @@ import {
 import { toast } from "react-toastify";
 import {
   getUserProfile,
+  createUserProfile,
   updateUserProfile,
   updateBusinessContext,
   patchUserProfile,
@@ -180,6 +181,7 @@ function ProfileSection({ section, onSave }) {
 
 const CompanyProfile = () => {
   const [loading, setLoading] = useState(true);
+  const [hasExistingProfile, setHasExistingProfile] = useState(false);
   const [profileRaw, setProfileRaw] = useState(null);
   const [companyName, setCompanyName] = useState("");
   const [industry, setIndustry] = useState("Financial services");
@@ -204,11 +206,12 @@ const CompanyProfile = () => {
           ? response
           : response?.data || response;
 
-        if (isMounted && data) {
+        if (isMounted && data && (data.id || data.companyName)) {
+          setHasExistingProfile(true);
           setProfileRaw(data);
           setCompanyName(data.companyName || "");
           setIndustry(data.industry || "Financial services");
-          setDescription(data.description || "");
+          setDescription(data.description || data.businessDescription || "");
           setLogoUrl(data.logoUrl || "");
           if (data.logoUrl) {
             const parts = data.logoUrl.split("/");
@@ -255,10 +258,23 @@ const CompanyProfile = () => {
                 "Nigerians seeking accessible and reliable financial services.",
             },
           ]);
+        } else if (isMounted) {
+          setHasExistingProfile(false);
         }
       } catch (err) {
-        console.error("Error loading user profile:", err);
-        toast.error("Could not load company profile data.");
+        if (
+          err.response?.status === 404 ||
+          err.response?.data?.code === "COMPANY_PROFILE_REQUIRED" ||
+          err.response?.data?.code === "COMPANY_PROFILE_NOT_FOUND"
+        ) {
+          if (isMounted) {
+            setHasExistingProfile(false);
+            setProfileRaw(null);
+          }
+        } else {
+          console.error("Error loading user profile:", err);
+          toast.error("Could not load company profile data.");
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -289,6 +305,28 @@ const CompanyProfile = () => {
   const updateSection = async (id, body) => {
     setSections((prev) => prev.map((s) => (s.id === id ? { ...s, body } : s)));
     try {
+      if (!hasExistingProfile) {
+        if (companyName.trim()) {
+          const createRes = await createUserProfile({
+            companyName: companyName.trim(),
+            industry: industry || "Financial services",
+            description: description || "",
+            businessDescription: description || "",
+            logoUrl: logoUrl || "",
+            [id]: body,
+          });
+          setHasExistingProfile(true);
+          const created = createRes?.data || createRes;
+          if (created && typeof created === "object") {
+            setProfileRaw((prev) => ({ ...prev, ...created }));
+          }
+        } else {
+          toast.info(
+            "Please enter your company name and click Save Changes to persist your profile."
+          );
+          return;
+        }
+      }
       await updateUserProfile(id, "update", body);
       toast.success("Section updated successfully!");
       // Broadcast update to header and overview
@@ -302,7 +340,7 @@ const CompanyProfile = () => {
             logoUrl,
             [id]: body,
           },
-        }),
+        })
       );
     } catch (err) {
       console.warn("Single field API save warning, will sync on full save:", err);
@@ -310,6 +348,11 @@ const CompanyProfile = () => {
   };
 
   const handleSaveChanges = async () => {
+    if (!companyName || !companyName.trim()) {
+      toast.error("Please enter your company name before saving.");
+      return;
+    }
+
     setSaving(true);
     setSaved(false);
 
@@ -318,32 +361,98 @@ const CompanyProfile = () => {
       return acc;
     }, {});
 
+    const cleanCompanyName = companyName.trim();
+    const cleanIndustry = industry || "Financial services";
+    const cleanDesc = description || "";
+
     const payload = {
-      companyName,
-      industry,
-      description,
-      logoUrl,
+      companyName: cleanCompanyName,
+      industry: cleanIndustry,
+      description: cleanDesc,
+      businessDescription: cleanDesc,
+      logoUrl: logoUrl || "",
       mission: sectionMap.mission || "",
       vision: sectionMap.vision || "",
       competitiveAdvantage: sectionMap.competitiveAdvantage || "",
       targetAudience: sectionMap.targetAudience || "",
+      businessStage: profileRaw?.businessStage || "Growing",
+      marketsServed: profileRaw?.marketsServed || "Global",
     };
 
     try {
+      let savedData = null;
+
+      if (!hasExistingProfile) {
+        // Profile does not exist yet: create it via POST /api/v1/profile
+        try {
+          const createRes = await createUserProfile(payload);
+          savedData = createRes?.data || createRes;
+          setHasExistingProfile(true);
+        } catch (createErr) {
+          if (
+            createErr.response?.status !== 409 &&
+            createErr.response?.status !== 400
+          ) {
+            throw createErr;
+          }
+        }
+      }
+
+      // Sync business context
       try {
-        await updateBusinessContext(payload);
-      } catch {
-        await patchUserProfile(payload);
+        const updateRes = await updateBusinessContext(payload);
+        savedData = updateRes?.data || updateRes || savedData;
+        setHasExistingProfile(true);
+      } catch (ctxErr) {
+        const isProfileRequired =
+          ctxErr?.response?.data?.code === "COMPANY_PROFILE_REQUIRED" ||
+          ctxErr?.response?.status === 404 ||
+          (typeof ctxErr?.response?.data?.message === "string" &&
+            ctxErr.response.data.message.includes("Create a company profile"));
+
+        if (isProfileRequired) {
+          const createRes = await createUserProfile(payload);
+          savedData = createRes?.data || createRes;
+          setHasExistingProfile(true);
+
+          // Retry updating business context with the created profile
+          try {
+            const retryRes = await updateBusinessContext(payload);
+            savedData = retryRes?.data || retryRes || savedData;
+          } catch (retryErr) {
+            console.warn(
+              "Context sync after profile creation warning:",
+              retryErr
+            );
+          }
+        } else {
+          // Fall back to patchUserProfile if available
+          try {
+            const patchRes = await patchUserProfile(payload);
+            savedData = patchRes?.data || patchRes || savedData;
+          } catch {
+            throw ctxErr;
+          }
+        }
       }
 
       setSaved(true);
+      if (savedData && typeof savedData === "object") {
+        setProfileRaw((prev) => ({ ...prev, ...savedData }));
+        if (typeof savedData.completenessPercent === "number") {
+          setCompletenessPercent(savedData.completenessPercent);
+        }
+        if (Array.isArray(savedData.missingFields)) {
+          setMissingFields(savedData.missingFields);
+        }
+      }
       toast.success("Company profile saved successfully!");
 
       // Dispatch event to update Header and Overview in real-time
       window.dispatchEvent(
         new CustomEvent("ahiia:profile-updated", {
-          detail: { ...profileRaw, ...payload },
-        }),
+          detail: { ...profileRaw, ...payload, ...(savedData || {}) },
+        })
       );
 
       setTimeout(() => setSaved(false), 2200);
@@ -351,7 +460,7 @@ const CompanyProfile = () => {
       console.error("Failed to save changes:", err);
       toast.error(
         err.response?.data?.message ||
-          "Failed to save profile changes. Please try again.",
+          "Failed to save profile changes. Please try again."
       );
     } finally {
       setSaving(false);
@@ -507,7 +616,7 @@ const CompanyProfile = () => {
                 type="text"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="e.g. lexis tech"
+                placeholder="e.g. Acme Innovations"
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#131B4D]/15 focus:border-[#131B4D]/40 transition-shadow"
               />
             </div>
