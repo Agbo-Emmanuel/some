@@ -19,7 +19,10 @@ const SettingsLanding = () => {
     setSaveHandler(() => fn);
   }, []);
 
-  const markDirty = useCallback((value = true) => setDirty(value), []);
+  const markDirty = useCallback((value = true) => {
+    setDirty(value);
+    if (value) setSaved(false);
+  }, []);
 
   const handleSave = async () => {
     if (!dirty || saving) return;
@@ -27,13 +30,10 @@ const SettingsLanding = () => {
     setSaved(false);
     if (saveHandler) {
       await saveHandler();
-    } else {
-      await new Promise((res) => setTimeout(res, 700));
     }
     setSaving(false);
     setDirty(false);
     setSaved(true);
-    setTimeout(() => setSaved(false), 2200);
   };
 
   return (

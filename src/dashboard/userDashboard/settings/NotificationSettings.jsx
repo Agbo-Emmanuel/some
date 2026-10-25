@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { toast } from "react-toastify";
+import {
+  getNotificationPreferences,
+  updateNotificationPreferences,
+} from "../../../services/user.service";
 
 function Toggle({ checked, onChange }) {
   return (
@@ -49,15 +54,54 @@ const NotificationSettings = () => {
   });
 
   useEffect(() => {
+    let isMounted = true;
+    const fetchPrefs = async () => {
+      try {
+        const res = await getNotificationPreferences();
+        const data = res?.data || res;
+        if (isMounted && data) {
+          setPrefs({
+            documentReady: Boolean(data.documentReady),
+            exportReady: Boolean(data.exportReady),
+            actionRequired: Boolean(data.actionRequired),
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load notification preferences:", err);
+        toast.error("Could not load notification preferences");
+      }
+    };
+    fetchPrefs();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     registerSave(async () => {
-      await new Promise((res) => setTimeout(res, 700));
-      // Persist `prefs` to the API here.
+      try {
+        await updateNotificationPreferences(prefs);
+        toast.success("Notification preferences saved successfully!");
+      } catch (err) {
+        console.error("Failed to save notification preferences:", err);
+        toast.error("Failed to save notification preferences");
+        throw err;
+      }
     });
   }, [registerSave, prefs]);
 
-  const handleToggle = (id, value) => {
-    setPrefs((prev) => ({ ...prev, [id]: value }));
+  const handleToggle = async (id, value) => {
+    const updated = { ...prefs, [id]: value };
+    setPrefs(updated);
     markDirty();
+    try {
+      await updateNotificationPreferences(updated);
+      toast.success("Notification preferences updated");
+    } catch (err) {
+      console.error("Failed to update notification preferences:", err);
+      setPrefs(prefs);
+      toast.error("Failed to update notification preference");
+    }
   };
 
   return (

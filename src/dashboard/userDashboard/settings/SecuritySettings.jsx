@@ -1,18 +1,56 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { KeyRound, ShieldCheck, Loader2, Check } from "lucide-react";
+import { toast } from "react-toastify";
+import { forgotPassword } from "../../../services/auth.service";
+import { getCurrentUser } from "../../../services/user.service";
+import { useCookies } from "react-cookie";
 
 const SecuritySettings = () => {
+  const [cookies] = useCookies(["userData"]);
+  const [email, setEmail] = useState(cookies.userData?.email || "");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  const handleSendReset = () => {
+  useEffect(() => {
+    let isMounted = true;
+    const fetchUser = async () => {
+      try {
+        const res = await getCurrentUser();
+        const data = res?.data || res;
+        if (isMounted && data?.email) {
+          setEmail(data.email);
+        }
+      } catch (err) {
+        console.error("Failed to load user email:", err);
+      }
+    };
+    if (!email) {
+      fetchUser();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [email]);
+
+  const handleSendReset = async () => {
     if (sending) return;
+    if (!email) {
+      toast.error("User email not found. Please try again later.");
+      return;
+    }
     setSending(true);
-    setTimeout(() => {
-      setSending(false);
+    try {
+      await forgotPassword({ email });
       setSent(true);
-      setTimeout(() => setSent(false), 2500);
-    }, 900);
+      toast.success(`Password reset link sent to ${email}!`);
+    } catch (err) {
+      console.error("Failed to send reset link:", err);
+      toast.error(
+        err.response?.data?.message || "Failed to send password reset link"
+      );
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -37,8 +75,7 @@ const SecuritySettings = () => {
                 Change password
               </p>
               <p className="text-xs text-slate-400">
-                We'll email a secure link to set a new password. Last changed 3
-                months ago.
+                We'll email a secure link to set a new password.
               </p>
             </div>
           </div>
@@ -49,7 +86,7 @@ const SecuritySettings = () => {
             className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold shrink-0 transition-all ${
               sent
                 ? "border-emerald-200 bg-emerald-50 text-emerald-600"
-                : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                : "border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer"
             } disabled:cursor-wait`}
           >
             {sending ? (

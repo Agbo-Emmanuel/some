@@ -86,6 +86,13 @@ function formatTimeAgo(dateStr) {
   });
 }
 
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 const Overview = () => {
   const navigate = useNavigate();
   const [insights, setInsights] = useState(null);
@@ -246,7 +253,8 @@ const Overview = () => {
             )}
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Good morning{profile?.companyName ? `, ${profile.companyName}` : ""}
+            {getGreeting()}
+            {profile?.companyName ? `, ${profile.companyName}` : ""}
           </h2>
           <p className="text-sm text-slate-500 leading-relaxed">
             Build professional business documents using the context you've already given Ahiia.
