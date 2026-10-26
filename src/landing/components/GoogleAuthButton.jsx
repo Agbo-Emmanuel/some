@@ -84,6 +84,7 @@ const GoogleAuthButton = ({
     GSI_MAX_WIDTH
   );
   const gsiScaleX = measuredWidth > 0 ? measuredWidth / gsiWidth : 1;
+  const gsiScaleY = 1.15; // visual shell is 46px (matches auth inputs); GSI large is 40px
 
   const configuredClientId =
     import.meta.env.VITE_GOOGLE_CLIENT_ID ||
@@ -275,7 +276,7 @@ const GoogleAuthButton = ({
         <div
           ref={buttonRef}
           aria-hidden="true"
-          className={`flex h-10 w-full items-center justify-center gap-2.5 rounded-xl border border-[#dadce0] bg-white px-4 text-sm font-medium text-[#3c4043] transition-colors duration-200 group-hover:bg-[#f8fafd] group-focus-within:ring-2 group-focus-within:ring-indigo-400 group-focus-within:ring-offset-1 group-active:bg-[#f1f5fb] ${
+          className={`flex h-[46px] w-full items-center justify-center gap-2.5 rounded-xl border border-[#dadce0] bg-white px-4 text-sm font-medium text-[#3c4043] transition-colors duration-200 group-hover:bg-[#f8fafd] group-focus-within:ring-2 group-focus-within:ring-indigo-400 group-focus-within:ring-offset-1 group-active:bg-[#f1f5fb] ${
             loading ? "opacity-50" : ""
           }`}
         >
@@ -307,8 +308,8 @@ const GoogleAuthButton = ({
               style: {
                 height: "100%",
                 width: gsiWidth,
-                transform: `scaleX(${gsiScaleX})`,
-                transformOrigin: "left center",
+                transform: `scale(${gsiScaleX}, ${gsiScaleY})`,
+                transformOrigin: "left top",
               },
             }}
           />

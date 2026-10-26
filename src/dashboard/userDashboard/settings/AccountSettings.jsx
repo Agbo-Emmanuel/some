@@ -74,7 +74,7 @@ const AccountSettings = () => {
               markDirty();
             }}
             placeholder="Chidi Okafor"
-            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#131B4D]/15 focus:border-[#131B4D]/40 transition-shadow disabled:opacity-60"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#131B4D]/15 focus:border-[#131B4D]/40 transition-shadow disabled:opacity-60"
           />
         </div>
 
@@ -87,7 +87,7 @@ const AccountSettings = () => {
             value={email}
             readOnly
             placeholder="yourcompanyemail@example.com"
-            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-500 placeholder:text-slate-400 cursor-not-allowed"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-500 placeholder:text-slate-400 cursor-not-allowed"
           />
           <p className="text-xs text-slate-400 mt-1.5">
             Your sign-in email can't be changed here. Contact support to update

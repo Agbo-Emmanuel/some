@@ -11,7 +11,7 @@ const WaitlistCta = () => {
   };
 
   return (
-    <section className="w-full bg-[#F7F8FB] px-4 py-16 sm:px-8 sm:py-20 lg:px-12">
+    <section className="w-full bg-[#F7F8FB] px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
       <div className="mx-auto max-w-5xl">
         <div className="relative overflow-hidden rounded-3xl bg-[#0A0A1A] px-6 py-16 sm:px-12 sm:py-20">
           {/* ambient glows */}
@@ -39,11 +39,11 @@ const WaitlistCta = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email address"
-                className="w-full flex-1 rounded-lg border border-white/10 bg-white px-5 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition-shadow duration-200 focus:ring-2 focus:ring-indigo-400"
+                className="w-full flex-1 rounded-xl border border-white/10 bg-white px-5 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition-shadow duration-200 focus:ring-2 focus:ring-indigo-400"
               />
               <button
                 type="submit"
-                className="group inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-indigo-500 px-6 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-indigo-400 active:scale-[0.98]"
+                className="group inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-500 px-6 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-indigo-400 active:scale-[0.98]"
               >
                 Get Started
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 transition-transform duration-200 group-hover:translate-x-0.5">

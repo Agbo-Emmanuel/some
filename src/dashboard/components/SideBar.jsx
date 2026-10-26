@@ -137,7 +137,7 @@ const SideBar = ({
                   key={item.name}
                   to={item.to}
                   onClick={onClose}
-                  className={`flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                     active
                       ? "bg-[#131B4D] text-white shadow-md shadow-[#131B4D]/15"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
@@ -155,7 +155,7 @@ const SideBar = ({
           </div>
 
           {/* Bottom Nav section */}
-          <div className="px-4 py-3 border-t border-slate-100 space-y-1">
+          <div className="px-4 py-3 border-t border-slate-100 space-y-1.5">
             {bottomNavItems.map((item) => {
               const active = location.pathname.startsWith(item.to);
               const Icon = item.icon;
@@ -164,7 +164,7 @@ const SideBar = ({
                   key={item.name}
                   to={item.to}
                   onClick={onClose}
-                  className={`flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
                     active
                       ? "bg-[#131B4D] text-white shadow-md shadow-[#131B4D]/15"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"

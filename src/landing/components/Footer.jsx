@@ -20,8 +20,8 @@ const Footer = () => {
   };
 
   return (
-    <footer className="w-full bg-white px-4 sm:px-8 lg:px-12">
-      <div className="mx-auto max-w-6xl border-t border-slate-100">
+    <footer className="w-full bg-white px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl border-t border-slate-100">
         <div className="flex flex-col gap-10 py-12 lg:flex-row lg:items-start lg:justify-between">
           {/* brand */}
           <div className="max-w-xs">

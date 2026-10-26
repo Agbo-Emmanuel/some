@@ -125,7 +125,7 @@ const CreateDocument = () => {
   };
 
   return (
-    <div className="space-y-5 max-w-6xl mx-auto pb-24 sm:pb-0">
+    <div className="space-y-6 max-w-7xl mx-auto pb-24 sm:pb-0">
       {/* Header */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs">
         <p className="text-xs font-bold text-blue-600 mb-1">

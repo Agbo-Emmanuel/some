@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+/* Document workspace: skeleton -> generated content swap.
+   Opacity-only so nothing moves (no layout shift). */
+@keyframes docFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.doc-fade-in {
+  animation: docFadeIn 320ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doc-fade-in { animation: none; }
+}

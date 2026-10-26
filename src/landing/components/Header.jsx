@@ -128,7 +128,7 @@ const Header = () => {
           mobileOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <div className="px-4 pb-6 pt-2 flex flex-col gap-1 bg-[#0B0B24]/95 backdrop-blur-md border-b border-white/10">
+        <div className="px-4 sm:px-6 pb-6 pt-2 flex flex-col gap-1 bg-[#0B0B24]/95 backdrop-blur-md border-b border-white/10">
           {NAV_LINKS.map((link) => (
             <a
               key={link.label}

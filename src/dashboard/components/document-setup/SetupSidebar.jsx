@@ -25,7 +25,7 @@ const SetupSidebar = ({
   ).length;
 
   return (
-    <aside className="space-y-4 lg:sticky lg:top-4 h-fit">
+    <aside className="space-y-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto h-fit">
       {/* Document Setup progress */}
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5">
         <p className="text-[11px] font-bold text-slate-400">Document Setup</p>

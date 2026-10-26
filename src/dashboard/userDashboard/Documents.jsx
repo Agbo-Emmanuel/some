@@ -597,7 +597,7 @@ const Documents = () => {
                   {/* Status + time + actions */}
                   <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 sm:shrink-0">
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
+                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${
                         STATUS_STYLES[doc.status] || STATUS_STYLES.Draft
                       }`}
                     >
@@ -617,7 +617,7 @@ const Documents = () => {
                               }`,
                         )
                       }
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-200 text-slate-800 text-xs font-bold hover:bg-[#131B4D] hover:text-white hover:border-[#131B4D] active:scale-[0.97] transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 text-slate-800 text-xs font-bold hover:bg-[#131B4D] hover:text-white hover:border-[#131B4D] active:scale-[0.97] transition-all cursor-pointer"
                     >
                       Open
                       <ArrowRight className="w-3.5 h-3.5" />
