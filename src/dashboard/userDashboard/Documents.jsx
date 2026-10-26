@@ -30,6 +30,7 @@ import {
 import ExportModal from "../components/ExportModal";
 
 const STATUS_STYLES = {
+  Saved: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
   Finalized:
     "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
   Draft: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
@@ -93,6 +94,18 @@ function getMinutesAgo(dateStr) {
 // Maps backend document schema to UI document item
 function mapApiDocument(item) {
   const cfg = getTypeConfig(item);
+  let status = item.status;
+  if (!status || status === "Draft") {
+    if (
+      (item.revisionCount && item.revisionCount > 1) ||
+      (item.updatedAt && item.createdAt && item.updatedAt !== item.createdAt)
+    ) {
+      status = "Saved";
+    } else {
+      status = "Draft";
+    }
+  }
+
   return {
     id: item.id,
     name: item.title || "Untitled Document",
@@ -100,7 +113,7 @@ function mapApiDocument(item) {
     rawType: item.documentType,
     slug: item.slug || "",
     revisions: item.revisionCount ?? 1,
-    status: item.status || "Draft",
+    status,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
     updatedDisplay: formatTimeAgo(item.updatedAt || item.createdAt),
@@ -287,6 +300,14 @@ const Documents = () => {
 
   useEffect(() => {
     fetchDocuments();
+
+    const handleDocumentUpdated = () => {
+      fetchDocuments();
+    };
+    window.addEventListener("ahiia:document-updated", handleDocumentUpdated);
+    return () => {
+      window.removeEventListener("ahiia:document-updated", handleDocumentUpdated);
+    };
   }, []);
 
   // Handle incoming newly created document from Create Document flow
@@ -354,7 +375,7 @@ const Documents = () => {
     return ["All", ...Array.from(set)];
   }, [documentsList]);
 
-  const statuses = ["All", "Draft", "Finalized", "Exported"];
+  const statuses = ["All", "Saved", "Draft", "Finalized", "Exported"];
   const sorts = ["Recently updated", "Name (A-Z)", "Most revisions"];
 
   const filtered = useMemo(() => {

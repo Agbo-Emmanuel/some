@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Check, Download, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
-import { exportDocument } from "../../services/document.service";
+import { exportDocument, updateDocumentStatus } from "../../services/document.service";
 import {
   exportToPdf,
   exportToPptx,
@@ -433,6 +433,19 @@ const ExportModal = ({
           await exportToDocx(payload);
         } else {
           await exportToPdf(payload);
+        }
+      }
+
+      if (documentId && documentId !== "new") {
+        try {
+          await updateDocumentStatus(documentId, { status: "Exported" });
+          window.dispatchEvent(
+            new CustomEvent("ahiia:document-updated", {
+              detail: { documentId, status: "Exported" },
+            })
+          );
+        } catch (err) {
+          console.warn("Could not sync exported status with server:", err);
         }
       }
 

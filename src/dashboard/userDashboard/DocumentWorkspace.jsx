@@ -36,6 +36,7 @@ import {
   updateDocument,
   updateDocumentStyle,
   updateDocumentContent,
+  updateDocumentStatus,
   regenerateDocumentSection,
   documentAssistantAction,
 } from "../../services/document.service";
@@ -239,6 +240,9 @@ const DocumentWorkspace = () => {
   const [revisionCount, setRevisionCount] = useState(
     navState.revisionCount ?? 0
   );
+  const [docStatus, setDocStatus] = useState(
+    navState.status || (navState.revisionCount > 1 ? "Saved" : "Draft")
+  );
   const [saveStatus, setSaveStatus] = useState("saved"); // "saved" | "saving" | "unsaved" | "error"
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -357,7 +361,22 @@ const DocumentWorkspace = () => {
 
       setIsDirty(false);
       setSaveStatus("saved");
+      setDocStatus("Saved");
       setLastSavedAt(new Date());
+
+      // Sync saved status with backend
+      try {
+        await updateDocumentStatus(documentId, { status: "Saved" });
+      } catch (statusErr) {
+        console.warn("Could not sync status with server:", statusErr);
+      }
+
+      window.dispatchEvent(
+        new CustomEvent("ahiia:document-updated", {
+          detail: { documentId, status: "Saved" },
+        })
+      );
+
       if (isManual) {
         toast.success("Document saved successfully");
       }
@@ -412,6 +431,14 @@ const DocumentWorkspace = () => {
               if (doc.title) setDocTitle(doc.title);
               if (doc.revisionCount !== undefined) setRevisionCount(doc.revisionCount);
               if (doc.styleTemplate) setStyleTemplate(doc.styleTemplate);
+              const initialStatus =
+                doc.status && doc.status !== "Draft"
+                  ? doc.status
+                  : (doc.revisionCount && doc.revisionCount > 1) ||
+                    (doc.updatedAt && doc.createdAt && doc.updatedAt !== doc.createdAt)
+                    ? "Saved"
+                    : doc.status || "Draft";
+              setDocStatus(initialStatus);
 
               const docTypeVal =
                 doc.documentType || doc.type || doc.documentTypeLabel || "";
@@ -997,7 +1024,29 @@ const DocumentWorkspace = () => {
               ) : null}
               <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 font-medium">
                 <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-                Draft · {revisionCount} revisions
+                <span
+                  className={`font-semibold ${
+                    docStatus === "Finalized"
+                      ? "text-emerald-700"
+                      : docStatus === "Exported"
+                        ? "text-indigo-700"
+                        : docStatus === "Saved" || saveStatus === "saved"
+                          ? "text-emerald-700"
+                          : "text-amber-700"
+                  }`}
+                >
+                  {docStatus === "Finalized"
+                    ? "Finalized"
+                    : docStatus === "Exported"
+                      ? "Exported"
+                      : docStatus === "Saved" || saveStatus === "saved"
+                        ? "Saved"
+                        : "Draft"}
+                </span>
+                <span>
+                  &middot; {revisionCount}{" "}
+                  {revisionCount === 1 ? "revision" : "revisions"}
+                </span>
               </span>
               {saveStatus === "saving" && (
                 <span
