@@ -42,7 +42,11 @@ import {
 import { getUserProfile } from "../../services/profile.service";
 import { getBrandKit } from "../../services/brandKit.service";
 import ExportModal from "../components/ExportModal";
-import { resolveSectionKey } from "../../config/documentTemplates";
+import {
+  resolveSectionKey,
+  buildDocumentContentPayload,
+  serializeSectionToString,
+} from "../../config/documentTemplates";
 
 // ============================================================================
 // Default initial proposal content mirroring reference design visual hierarchy
@@ -209,6 +213,65 @@ const DEFAULT_BUSINESS_PLAN_SECTIONS = [
   },
 ];
 
+// ============================================================================
+// Helper to parse a dictionary map of sections ({ [sectionKey]: string })
+// into structured UI sections array
+// ============================================================================
+const parseSectionMapToSections = (
+  map,
+  docIsBusinessPlan,
+  docIsSop,
+  docType
+) => {
+  if (!map || typeof map !== "object") return null;
+
+  const baseSections = docIsBusinessPlan
+    ? DEFAULT_BUSINESS_PLAN_SECTIONS
+    : docIsSop
+      ? DEFAULT_SOP_SECTIONS
+      : DEFAULT_PROPOSAL_SECTIONS;
+
+  const processedKeys = new Set();
+
+  const sections = baseSections.map((sec) => {
+    const key = sec.sectionKey || resolveSectionKey(sec, docType);
+    processedKeys.add(key);
+    processedKeys.add(sec.id);
+
+    const text = map[key] || map[sec.id];
+    if (typeof text === "string" && text.trim()) {
+      const paras = text
+        .split(/\n\n+/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      return {
+        ...sec,
+        paragraphs: paras.length > 0 ? paras : [text.trim()],
+      };
+    }
+    return sec;
+  });
+
+  // Any extra keys from the map that were not in baseSections
+  Object.entries(map).forEach(([k, v]) => {
+    if (!processedKeys.has(k) && typeof v === "string" && v.trim()) {
+      sections.push({
+        id: k.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(),
+        sectionKey: k,
+        title: k
+          .replace(/([A-Z])/g, " $1")
+          .replace(/^./, (s) => s.toUpperCase()),
+        paragraphs: v
+          .split(/\n\n+/)
+          .map((p) => p.trim())
+          .filter(Boolean),
+      });
+    }
+  });
+
+  return sections;
+};
+
 // Quick actions listed in reference design AI Assistant panel
 const QUICK_ACTIONS = [
   "Improve writing",
@@ -289,6 +352,7 @@ const DocumentWorkspace = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [isNotFound, setIsNotFound] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -381,11 +445,14 @@ const DocumentWorkspace = () => {
     setSaveStatus("saving");
     setSaveError(null);
 
+    const docTypeVal =
+      docData?.documentType || docData?.type || navState.docType || "Proposal";
+
+    // Build the compliant section-keyed JSON object where every section has a non-empty string value
+    const contentMap = buildDocumentContentPayload(currentSections, docTypeVal);
+
     const payload = {
-      content: { sections: currentSections },
-      sections: currentSections,
-      title: title || docTitle,
-      styleTemplate: style || styleTemplate,
+      content: contentMap,
     };
 
     try {
@@ -412,7 +479,21 @@ const DocumentWorkspace = () => {
       return true;
     } catch (err) {
       console.error("Failed to persist document content:", err);
+      if (
+        err.response?.status === 404 ||
+        err.response?.data?.code === "DOCUMENT_NOT_FOUND"
+      ) {
+        setIsNotFound(true);
+      }
+      const requestErrors = err.response?.data?.errors?.request;
+      const validationMsg = Array.isArray(requestErrors)
+        ? requestErrors[0]
+        : typeof requestErrors === "string"
+          ? requestErrors
+          : null;
+
       const msg =
+        validationMsg ||
         err.response?.data?.message ||
         err.response?.data?.detail ||
         err.message ||
@@ -467,6 +548,16 @@ const DocumentWorkspace = () => {
                   loadedSections = doc.content.sections;
                 } else if (Array.isArray(doc.content)) {
                   loadedSections = doc.content;
+                } else if (
+                  typeof doc.content === "object" &&
+                  !Array.isArray(doc.content)
+                ) {
+                  loadedSections = parseSectionMapToSections(
+                    doc.content,
+                    docIsBusinessPlan,
+                    docIsSop,
+                    docTypeVal
+                  );
                 } else if (typeof doc.content === "string") {
                   try {
                     const parsed = JSON.parse(doc.content);
@@ -474,6 +565,17 @@ const DocumentWorkspace = () => {
                       loadedSections = parsed.sections;
                     } else if (Array.isArray(parsed)) {
                       loadedSections = parsed;
+                    } else if (
+                      parsed &&
+                      typeof parsed === "object" &&
+                      !Array.isArray(parsed)
+                    ) {
+                      loadedSections = parseSectionMapToSections(
+                        parsed,
+                        docIsBusinessPlan,
+                        docIsSop,
+                        docTypeVal
+                      );
                     }
                   } catch {
                     // ignore JSON parse error
@@ -718,6 +820,12 @@ const DocumentWorkspace = () => {
               "Could not load document by ID, using local initialized context:",
               err
             );
+            if (
+              err.response?.status === 404 ||
+              err.response?.data?.code === "DOCUMENT_NOT_FOUND"
+            ) {
+              setIsNotFound(true);
+            }
             hasLoadedInitialRef.current = true;
             lastSavedSnapshotRef.current = JSON.stringify({
               sections,
@@ -1492,6 +1600,35 @@ const DocumentWorkspace = () => {
           </button>
         </div>
       </div>
+
+      {/* 404 Not Found Banner */}
+      {isNotFound && (
+        <div className="mb-6 p-4 rounded-2xl border border-amber-300 bg-amber-50/90 shadow-xs flex items-start gap-3.5">
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1 text-sm text-amber-900">
+            <p className="font-bold text-amber-950">
+              Document Not Found (404)
+            </p>
+            <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+              The document ID in your URL (<span className="font-mono bg-amber-100/90 px-1 py-0.5 rounded text-amber-900">{documentId}</span>) does not exist in the remote database. Changes cannot be persisted to this ID.
+            </p>
+            <div className="flex flex-wrap items-center gap-2.5 mt-3">
+              <Link
+                to="/dashboard/documents"
+                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white transition-colors shadow-xs"
+              >
+                Go to Documents List
+              </Link>
+              <Link
+                to="/dashboard/create-document"
+                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white border border-amber-300 text-amber-900 hover:bg-amber-100/60 transition-colors shadow-2xs"
+              >
+                Create New Document
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ==================================================================== */}
       {/* 2. MAIN WORKSPACE CONTAINER: DOCUMENT CANVAS + AI ASSISTANT PANEL     */}

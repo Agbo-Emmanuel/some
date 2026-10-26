@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
 import { useCookies } from "react-cookie";
@@ -6,6 +6,10 @@ import { toast } from "react-toastify";
 import { googleAuth } from "../../services/auth.service";
 import { normalizeTokens } from "../../api/tokenRefresh";
 import { HiExclamationTriangle, HiXMark } from "react-icons/hi2";
+import { FcGoogle } from "react-icons/fc";
+
+const GSI_MIN_WIDTH = 200;
+const GSI_MAX_WIDTH = 400;
 
 /**
  * Safely parse a JWT without requiring external libraries.
@@ -48,6 +52,38 @@ const GoogleAuthButton = ({
   const [, setCookie] = useCookies(["accessToken", "refreshToken", "userData"]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+
+  const buttonRef = useRef(null);
+  const [buttonWidth, setButtonWidth] = useState(0);
+
+  // The GSI button only accepts a pixel width between 200 and 400. Measure the
+  // visible button so the invisible Google control can be sized (and scaled)
+  // to cover it exactly, keeping every part of the button clickable.
+  useEffect(() => {
+    const node = buttonRef.current;
+    if (!node) return;
+
+    const updateWidth = () =>
+      setButtonWidth(node.getBoundingClientRect().width);
+
+    updateWidth();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateWidth);
+      return () => window.removeEventListener("resize", updateWidth);
+    }
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  const measuredWidth = Math.round(buttonWidth) || GSI_MAX_WIDTH;
+  const gsiWidth = Math.min(
+    Math.max(measuredWidth, GSI_MIN_WIDTH),
+    GSI_MAX_WIDTH
+  );
+  const gsiScaleX = measuredWidth > 0 ? measuredWidth / gsiWidth : 1;
 
   const configuredClientId =
     import.meta.env.VITE_GOOGLE_CLIENT_ID ||
@@ -233,11 +269,29 @@ const GoogleAuthButton = ({
       )}
 
       {/* Google Login Control Container */}
-      <div className="relative w-full">
+      <div className="group relative w-full">
+        {/* Visible, fully styled button shell. The Google logo + label are a
+            single centered group with a 10px (gap-2.5) gap between them. */}
         <div
-          className={`w-full flex justify-center items-center rounded-xl overflow-hidden transition-opacity ${
-            loading ? "opacity-50 pointer-events-none" : "opacity-100"
-          } [&>div]:w-full [&>div>iframe]:!w-full [&>div>iframe]:!min-w-full`}
+          ref={buttonRef}
+          aria-hidden="true"
+          className={`flex h-10 w-full items-center justify-center gap-2.5 rounded-xl border border-[#dadce0] bg-white px-4 text-sm font-medium text-[#3c4043] transition-colors duration-200 group-hover:bg-[#f8fafd] group-focus-within:ring-2 group-focus-within:ring-indigo-400 group-focus-within:ring-offset-1 group-active:bg-[#f1f5fb] ${
+            loading ? "opacity-50" : ""
+          }`}
+        >
+          <FcGoogle className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+          <span className="leading-none">
+            {mode === "signup" ? "Sign up with Google" : "Continue with Google"}
+          </span>
+        </div>
+
+        {/* Invisible native Google control laid over the shell. It keeps the
+            official credential flow (ID token) while the shell controls the
+            visuals, which cannot be styled from outside Google's iframe. */}
+        <div
+          className={`absolute inset-0 z-10 overflow-hidden rounded-xl opacity-0 ${
+            loading ? "pointer-events-none" : ""
+          }`}
         >
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
@@ -246,15 +300,23 @@ const GoogleAuthButton = ({
             size="large"
             shape="rectangular"
             text={mode === "signup" ? "signup_with" : "continue_with"}
-            width="100%"
+            width={gsiWidth}
             useOneTap={useOneTap}
             context={mode === "signup" ? "signup" : "signin"}
+            containerProps={{
+              style: {
+                height: "100%",
+                width: gsiWidth,
+                transform: `scaleX(${gsiScaleX})`,
+                transformOrigin: "left center",
+              },
+            }}
           />
         </div>
 
         {/* Loading Overlay */}
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-xl bg-white/90 backdrop-blur-xs border border-slate-200 text-xs font-semibold text-slate-700 shadow-xs">
+          <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/90 text-xs font-semibold text-slate-700 shadow-xs backdrop-blur-xs">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
             <span>Verifying Google account...</span>
           </div>

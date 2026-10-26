@@ -782,6 +782,10 @@ graph TD
 - **Decision:** Structured nested collections (e.g., `socialLinks` in `/api/v1/brand-kit`, `structuredInputs` in `/api/v1/documents`) MUST be transmitted as native JSON objects or arrays, NEVER double-encoded with `JSON.stringify`.
 - **Rationale:** Backend schema validation checks that arrays and objects match native JSON data structures. Stringified JSON causes 400 Bad Request errors (`INVALID_SOCIAL_LINKS`).
 
+### ADR-9: Native Section-Keyed JSON Object for Document Content Persistence
+- **Decision:** Document content updates via `PUT /api/v1/documents/:id/content` MUST transmit `{ content: { [sectionKey]: "non-empty string" } }` where `content` is a native JSON object (NEVER double-encoded as a string via `JSON.stringify`), and every blueprint section key maps to a non-empty string value (`buildDocumentContentPayload`).
+- **Rationale:** The remote content validator explicitly rejects serialized JSON strings with `"Document content must be a section-keyed JSON object."` and rejects complex/empty nested objects with `"Every document section must have a non-empty string value."`. The backend requires `content` to be a plain JSON object whose keys match blueprint section keys and whose values are non-empty text strings.
+
 ---
 
 ## 12. Prioritized Implementation Roadmap & Sequencing

@@ -249,3 +249,109 @@ export const resolveSectionKey = (section, docType) => {
   return camelCandidate;
 };
 
+/**
+ * Serializes a rich UI section object into a clean, non-empty text string.
+ * Conforms to backend requirement: "Every document section must have a non-empty string value."
+ * @param {Object} sec
+ * @returns {string}
+ */
+export const serializeSectionToString = (sec) => {
+  if (!sec) return "";
+  if (typeof sec === "string") return sec.trim();
+  if (typeof sec.content === "string" && sec.content.trim()) {
+    return sec.content.trim();
+  }
+
+  const parts = [];
+
+  if (sec.leadText && typeof sec.leadText === "string" && sec.leadText.trim()) {
+    parts.push(sec.leadText.trim());
+  }
+
+  if (Array.isArray(sec.paragraphs) && sec.paragraphs.length > 0) {
+    const textParas = sec.paragraphs
+      .map((p) => (typeof p === "string" ? p.trim() : JSON.stringify(p)))
+      .filter(Boolean);
+    if (textParas.length > 0) parts.push(textParas.join("\n\n"));
+  }
+
+  if (Array.isArray(sec.bullets) && sec.bullets.length > 0) {
+    const bulletLines = sec.bullets
+      .map((b) => (typeof b === "string" ? `• ${b.trim()}` : `• ${JSON.stringify(b)}`))
+      .filter(Boolean);
+    if (bulletLines.length > 0) parts.push(bulletLines.join("\n"));
+  }
+
+  if (Array.isArray(sec.steps) && sec.steps.length > 0) {
+    const stepLines = sec.steps
+      .map((s, idx) => (typeof s === "string" ? `${idx + 1}. ${s.trim()}` : `${idx + 1}. ${JSON.stringify(s)}`))
+      .filter(Boolean);
+    if (stepLines.length > 0) parts.push(stepLines.join("\n"));
+  }
+
+  if (Array.isArray(sec.keyValueRows) && sec.keyValueRows.length > 0) {
+    const kvLines = sec.keyValueRows
+      .filter((r) => r && (r.key || r.value))
+      .map((r) => `${r.key || "Item"}: ${r.value || ""}`);
+    if (kvLines.length > 0) parts.push(kvLines.join("\n"));
+  }
+
+  if (Array.isArray(sec.tableRows) && sec.tableRows.length > 0) {
+    const tableLines = sec.tableRows.map((r) => {
+      if (r.item && r.cost) return `${r.item}: ${r.cost}`;
+      if (r.milestone && r.duration) return `${r.milestone}: ${r.duration}`;
+      return Object.entries(r).map(([k, v]) => `${k}: ${v}`).join(", ");
+    });
+    if (tableLines.length > 0) parts.push(tableLines.join("\n"));
+  }
+
+  if (sec.totalCost) {
+    parts.push(`Total: ${sec.totalCost}`);
+  }
+
+  if (sec.note && typeof sec.note === "string" && sec.note.trim()) {
+    parts.push(sec.note.trim());
+  }
+
+  if (Array.isArray(sec.callouts) && sec.callouts.length > 0) {
+    const calloutLines = sec.callouts
+      .map((c) => (c.title ? `[${c.type || "Note"}] ${c.title}: ${c.content || ""}` : c.content))
+      .filter(Boolean);
+    if (calloutLines.length > 0) parts.push(calloutLines.join("\n"));
+  }
+
+  const result = parts.join("\n\n").trim();
+  return result || sec.title || "Section content to be provided.";
+};
+
+/**
+ * Builds the PUT /api/v1/documents/{id}/content payload.
+ * Maps every section to its blueprint section key with a non-empty string value,
+ * and ensures required blueprint sections exist.
+ * @param {Array} sections
+ * @param {string} [docType]
+ * @returns {Object} Section-keyed JSON object with non-empty string values
+ */
+export const buildDocumentContentPayload = (sections, docType) => {
+  const contentMap = {};
+
+  (sections || []).forEach((sec) => {
+    const key = sec.sectionKey || resolveSectionKey(sec, docType);
+    if (key) {
+      const strVal = serializeSectionToString(sec);
+      contentMap[key] = strVal && strVal.trim() ? strVal.trim() : "Details to be provided.";
+    }
+  });
+
+  const template = getTemplate(docType);
+  if (template?.requiredSections) {
+    template.requiredSections.forEach((reqSec) => {
+      if (!contentMap[reqSec.key] || !contentMap[reqSec.key].trim()) {
+        contentMap[reqSec.key] = `${reqSec.label} content to be provided.`;
+      }
+    });
+  }
+
+  return contentMap;
+};
+
