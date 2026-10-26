@@ -137,9 +137,14 @@ const Overview = () => {
     const handleProfileUpdated = () => {
       fetchDashboardInsightsData(false);
     };
+    const handleDocumentUpdated = () => {
+      fetchDashboardInsightsData(false);
+    };
     window.addEventListener("ahiia:profile-updated", handleProfileUpdated);
+    window.addEventListener("ahiia:document-updated", handleDocumentUpdated);
     return () => {
       window.removeEventListener("ahiia:profile-updated", handleProfileUpdated);
+      window.removeEventListener("ahiia:document-updated", handleDocumentUpdated);
     };
   }, []);
 
@@ -193,13 +198,28 @@ const Overview = () => {
     }
   };
 
+  const resolveDocStatus = (doc) => {
+    if (!doc) return "Draft";
+    if (doc.status === "Finalized" || doc.status === "Exported" || doc.status === "Saved") {
+      return doc.status;
+    }
+    if (
+      (doc.revisionCount && doc.revisionCount > 1) ||
+      (doc.updatedAt && doc.createdAt && doc.updatedAt !== doc.createdAt)
+    ) {
+      return "Saved";
+    }
+    return doc.status || "Draft";
+  };
+
   // Filter documents
   const filteredDocuments = recentDocuments.filter((doc) => {
     const docType = doc.documentTypeLabel || doc.documentType || "";
     const matchesType =
       typeFilter === "All types" || docType === typeFilter;
+    const effectiveStatus = resolveDocStatus(doc);
     const matchesStatus =
-      statusFilter === "All Status" || doc.status === statusFilter;
+      statusFilter === "All Status" || effectiveStatus === statusFilter;
     return matchesType && matchesStatus;
   });
 
@@ -224,6 +244,12 @@ const Overview = () => {
         return (
           <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#EEF2FF] text-[#4F46E5] border border-indigo-200/50">
             Exported
+          </span>
+        );
+      case "Saved":
+        return (
+          <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#ECFDF5] text-[#059669] border border-emerald-200/50">
+            Saved
           </span>
         );
       case "Draft":
@@ -401,6 +427,7 @@ const Overview = () => {
                   className="appearance-none text-xs font-semibold bg-white text-slate-700 pl-3.5 pr-8 py-2.5 rounded-xl border border-slate-200 shadow-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
                 >
                   <option>All Status</option>
+                  <option>Saved</option>
                   <option>Draft</option>
                   <option>Finalized</option>
                   <option>Exported</option>
@@ -493,7 +520,7 @@ const Overview = () => {
 
                     {/* Middle: Badge & Updated */}
                     <div className="hidden sm:flex items-center gap-4 shrink-0">
-                      <div>{getStatusBadge(doc.status)}</div>
+                      <div>{getStatusBadge(resolveDocStatus(doc))}</div>
                       <span className="text-xs text-slate-400 w-32 text-right">
                         {formatTimeAgo(doc.updatedAt)}
                       </span>
