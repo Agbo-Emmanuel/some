@@ -97,11 +97,68 @@ export const getGenerationContext = async (documentType) => {
 
 /**
  * Update the full content of a document.
+ * Conforms to PUT /api/v1/documents/{id}/content:
+ * Expects a section-keyed JSON object where each section has a non-empty string value:
+ * { content: { [sectionKey]: "non-empty string" } }
  * @param {string} id
- * @param {Object} payload
+ * @param {Object|string} payload - { content: Object } or raw section map
  */
 export const updateDocumentContent = async (id, payload) => {
-  const response = await api.put(ENDPOINTS.DOCUMENT_CONTENT(id), payload);
+  let contentObj = payload;
+
+  if (typeof payload === "string") {
+    try {
+      contentObj = JSON.parse(payload);
+    } catch {
+      contentObj = payload;
+    }
+  }
+
+  // If passed as { content: ... }
+  if (
+    contentObj &&
+    typeof contentObj === "object" &&
+    !Array.isArray(contentObj) &&
+    contentObj.content !== undefined
+  ) {
+    let inner = contentObj.content;
+    if (typeof inner === "string") {
+      try {
+        inner = JSON.parse(inner);
+      } catch {
+        // keep as is
+      }
+    }
+    contentObj = inner;
+  }
+
+  if (typeof contentObj === "string") {
+    try {
+      contentObj = JSON.parse(contentObj);
+    } catch {
+      // keep as is
+    }
+  }
+
+  // Enforce section-keyed JSON object with non-empty string values
+  const cleanMap = {};
+  if (
+    contentObj &&
+    typeof contentObj === "object" &&
+    !Array.isArray(contentObj)
+  ) {
+    Object.entries(contentObj).forEach(([k, v]) => {
+      if (typeof v === "string" && v.trim()) {
+        cleanMap[k] = v.trim();
+      } else if (v !== null && v !== undefined) {
+        cleanMap[k] = typeof v === "object" ? JSON.stringify(v) : String(v);
+      }
+    });
+  }
+
+  const response = await api.put(ENDPOINTS.DOCUMENT_CONTENT(id), {
+    content: Object.keys(cleanMap).length > 0 ? cleanMap : contentObj,
+  });
   return response.data;
 };
 
