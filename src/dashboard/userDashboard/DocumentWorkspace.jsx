@@ -42,6 +42,7 @@ import {
 import { getUserProfile } from "../../services/profile.service";
 import { getBrandKit } from "../../services/brandKit.service";
 import ExportModal from "../components/ExportModal";
+import { resolveSectionKey } from "../../config/documentTemplates";
 
 // ============================================================================
 // Default initial proposal content mirroring reference design visual hierarchy
@@ -49,6 +50,7 @@ import ExportModal from "../components/ExportModal";
 const DEFAULT_PROPOSAL_SECTIONS = [
   {
     id: "executive-summary",
+    sectionKey: "executiveSummary",
     title: "Executive Summary",
     isHighlighted: true,
     paragraphs: [
@@ -58,6 +60,7 @@ const DEFAULT_PROPOSAL_SECTIONS = [
   },
   {
     id: "scope-of-work",
+    sectionKey: "scopeOfWork",
     title: "Scope of Work",
     leadText: "The project will include:",
     bullets: [
@@ -70,6 +73,7 @@ const DEFAULT_PROPOSAL_SECTIONS = [
   },
   {
     id: "pricing",
+    sectionKey: "pricing",
     title: "Pricing",
     tableRows: [
       { item: "Solar panels", cost: "₦28,000,000" },
@@ -81,6 +85,7 @@ const DEFAULT_PROPOSAL_SECTIONS = [
   },
   {
     id: "timeline",
+    sectionKey: "timeline",
     title: "Timeline",
     tableRows: [
       { milestone: "Project duration", duration: "8 weeks" },
@@ -97,6 +102,7 @@ const DEFAULT_PROPOSAL_SECTIONS = [
 const DEFAULT_SOP_SECTIONS = [
   {
     id: "purpose-and-scope",
+    sectionKey: "theProcess",
     title: "Purpose & Scope",
     paragraphs: [
       "This procedure covers the receipt, inspection and recording of all solar equipment arriving at the Ikeja store. It applies to every inbound delivery, including supplier shipments and site returns.",
@@ -104,6 +110,7 @@ const DEFAULT_SOP_SECTIONS = [
   },
   {
     id: "responsibilities-and-requirements",
+    sectionKey: "responsibilitiesAndRequirements",
     title: "Responsibilities & Requirements",
     keyValueRows: [
       { key: "Performed by", value: "Warehouse Officer" },
@@ -117,6 +124,7 @@ const DEFAULT_SOP_SECTIONS = [
   },
   {
     id: "procedure",
+    sectionKey: "procedure",
     title: "Procedure",
     steps: [
       "Confirm the delivery note against the purchase order before any item leaves the vehicle.",
@@ -129,6 +137,7 @@ const DEFAULT_SOP_SECTIONS = [
   },
   {
     id: "notes-and-exceptions",
+    sectionKey: "notesAndExceptions",
     title: "Notes & Exceptions",
     callouts: [
       {
@@ -153,6 +162,7 @@ const DEFAULT_SOP_SECTIONS = [
 const DEFAULT_BUSINESS_PLAN_SECTIONS = [
   {
     id: "executive-summary",
+    sectionKey: "documentBrief",
     title: "Executive Summary",
     paragraphs: [
       "SolarTech Nigeria designs, installs and maintains commercial solar systems for businesses that need dependable power without relying on the grid. This plan covers the next three years of growth across the Southwest, funded by a combination of retained earnings and a ₦120,000,000 facility.",
@@ -160,6 +170,7 @@ const DEFAULT_BUSINESS_PLAN_SECTIONS = [
   },
   {
     id: "market-and-customers",
+    sectionKey: "marketAndCustomers",
     title: "Market & Customers",
     leadText:
       "Our customers are commercial operators spending ₦1,500,000 or more a month on diesel — manufacturing, cold chain, hospitality and light industrial parks.",
@@ -171,6 +182,7 @@ const DEFAULT_BUSINESS_PLAN_SECTIONS = [
   },
   {
     id: "operations-and-strategy",
+    sectionKey: "operationsAndStrategy",
     title: "Operations & Strategy",
     bullets: [
       "Two installation crews expanding to four by Q3 2027",
@@ -180,6 +192,7 @@ const DEFAULT_BUSINESS_PLAN_SECTIONS = [
   },
   {
     id: "financial-overview",
+    sectionKey: "financialInformation",
     title: "Financial Overview",
     isFinancialOverview: true,
     keyValueRows: [
@@ -870,14 +883,27 @@ const DocumentWorkspace = () => {
       let updatedSections = [...sections];
 
       if (targetSec) {
-        // Targeted section regeneration via actual backend endpoint
+        // Resolve blueprint section key conforming to backend document blueprint (e.g. "executiveSummary")
+        const docType =
+          docData?.documentType || docData?.type || navState.docType || "Proposal";
+        const sectionKey = resolveSectionKey(targetSec, docType);
+
+        // Targeted section regeneration via actual backend endpoint (POST /api/v1/documents/:id/regenerate-section)
         const aiRes = await regenerateDocumentSection(documentId, {
-          sectionKey: targetSec.id,
-          sectionId: targetSec.id,
-          prompt: finalPrompt,
+          sectionKey,
         });
 
         const aiData = aiRes?.data || aiRes;
+
+        let parsedContent = aiData?.content;
+        if (typeof parsedContent === "string") {
+          try {
+            parsedContent = JSON.parse(parsedContent);
+          } catch {
+            // Keep as string
+          }
+        }
+
         const regeneratedSec =
           aiData?.section ||
           aiData?.data?.section ||
@@ -889,32 +915,76 @@ const DocumentWorkspace = () => {
               ? {
                   ...sec,
                   ...regeneratedSec,
-                  id: regeneratedSec.id || sec.id,
+                  id: sec.id,
                   title: regeneratedSec.title || sec.title,
                 }
               : sec
           );
-        } else if (aiData?.content?.sections || Array.isArray(aiData?.sections)) {
-          updatedSections = aiData?.content?.sections || aiData?.sections;
-        } else if (typeof aiData?.content === "string" || typeof aiData?.text === "string") {
-          const newText = aiData?.content || aiData?.text;
+        } else if (Array.isArray(parsedContent?.sections) || Array.isArray(aiData?.sections)) {
+          updatedSections = parsedContent?.sections || aiData?.sections;
+        } else if (Array.isArray(parsedContent)) {
           updatedSections = updatedSections.map((sec) => {
             if (sec.id === targetSec.id) {
               if (sec.paragraphs) {
-                return { ...sec, paragraphs: [...sec.paragraphs, newText] };
+                return { ...sec, paragraphs: parsedContent };
               }
               if (sec.steps) {
-                return { ...sec, steps: [...sec.steps, newText] };
+                return { ...sec, steps: parsedContent };
               }
               if (sec.bullets) {
-                return { ...sec, bullets: [...sec.bullets, newText] };
+                return { ...sec, bullets: parsedContent };
+              }
+            }
+            return sec;
+          });
+        } else if (typeof parsedContent === "object" && parsedContent !== null) {
+          updatedSections = updatedSections.map((sec) =>
+            sec.id === targetSec.id
+              ? { ...sec, ...parsedContent, id: sec.id }
+              : sec
+          );
+        } else if (typeof parsedContent === "string" || typeof aiData?.text === "string") {
+          const newText = (parsedContent || aiData?.text || "").trim();
+          updatedSections = updatedSections.map((sec) => {
+            if (sec.id === targetSec.id) {
+              if (sec.paragraphs) {
+                const splitParas = newText
+                  .split(/\n\n+/)
+                  .map((p) => p.trim())
+                  .filter(Boolean);
+                return {
+                  ...sec,
+                  paragraphs: splitParas.length > 0 ? splitParas : [newText],
+                };
+              }
+              if (sec.steps) {
+                const splitSteps = newText
+                  .split(/\n+/)
+                  .map((s) => s.replace(/^\d+[\.\)]\s*/, "").trim())
+                  .filter(Boolean);
+                return {
+                  ...sec,
+                  steps: splitSteps.length > 0 ? splitSteps : [newText],
+                };
+              }
+              if (sec.bullets) {
+                const splitBullets = newText
+                  .split(/\n+/)
+                  .map((b) => b.replace(/^[-*•]\s*/, "").trim())
+                  .filter(Boolean);
+                return {
+                  ...sec,
+                  bullets: splitBullets.length > 0 ? splitBullets : [newText],
+                };
               }
             }
             return sec;
           });
         }
 
-        toast.success(`Updated "${targetSec.title}" with AI`);
+        const successMessage =
+          aiData?.actionApplied || `Updated "${targetSec.title}" with AI`;
+        toast.success(successMessage);
       } else {
         // Whole document refinement via actual backend endpoint
         const aiRes = await documentAssistantAction(documentId, {
@@ -944,7 +1014,15 @@ const DocumentWorkspace = () => {
       await persistContent(updatedSections, docTitle, styleTemplate, false);
     } catch (err) {
       console.error("AI action failed:", err);
+      const requestErrors = err.response?.data?.errors?.request;
+      const validationMsg = Array.isArray(requestErrors)
+        ? requestErrors[0]
+        : typeof requestErrors === "string"
+          ? requestErrors
+          : null;
+
       const errMsg =
+        validationMsg ||
         err.response?.data?.message ||
         err.response?.data?.detail ||
         err.message ||
