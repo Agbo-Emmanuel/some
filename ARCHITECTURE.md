@@ -4,7 +4,8 @@
 > **Scope:** Full System Architecture, Frontend Implementation, Service Integration, and Production State  
 > **Repository:** `some` (Ahiia.AI Web Client)  
 > **Audited Git HEAD:** Current Workspace  
-> **Last Updated:** October 25, 2026  
+> **Last Updated:** October 26, 2026  
+> **Version:** 2.1.0  
 > **Maintenance Protocol:** Living document governed by Section 14 (Living Documentation Protocol). Every PR modifying routes, endpoints, state boundaries, or service connections MUST update this reference.
 
 ---
@@ -156,14 +157,14 @@ some/
 │   │       ├── DocumentSetup.jsx      # Wizard interface for configuring document inputs
 │   │       ├── DocumentWorkspace.jsx  # Rich document canvas: persistence, autosave, AI assistant
 │   │       ├── CompanyProfile.jsx     # Company memory: mission, vision, audience, Cloudinary logo
-│   │       ├── BrandKit.jsx           # Brand styling: colors, fonts, tagline (currently simulated)
-│   │       ├── Analytics.jsx          # Usage statistics and generator counts (currently mocked)
+│   │       ├── BrandKit.jsx           # Brand styling: colors, fonts, tagline, socialLinks (wired to /api/v1/brand-kit)
+│   │       ├── Analytics.jsx          # Usage statistics and generator counts (wired to /api/v1/analytics/summary)
 │   │       ├── Help.jsx               # Knowledge base, support, and documentation
 │   │       └── settings/              # User settings tab views
 │   │           ├── SettingsLanding.jsx # Tabs wrapper (Account, Security, Notifications)
-│   │           ├── AccountSettings.jsx # Name & email (simulated save)
-│   │           ├── SecuritySettings.jsx# Password reset (simulated save)
-│   │           └── NotificationSettings.jsx # Notification toggles (simulated save)
+│   │           ├── AccountSettings.jsx # Name & email (wired to /api/v1/user/me)
+│   │           ├── SecuritySettings.jsx# Password reset trigger (wired to /api/v1/auth/forgot-password)
+│   │           └── NotificationSettings.jsx # Notification toggles (wired to /api/v1/user/notification-preferences)
 │   ├── hooks/
 │   │   └── useScrollSpy.js            # Landing page navigation scroll spy hook
 │   ├── landing/                       # Public website & authentication views
@@ -172,8 +173,8 @@ some/
 │   │   │   ├── Signup.jsx             # Email/Password registration
 │   │   │   ├── Login.jsx              # Credentials sign-in
 │   │   │   ├── Otp.jsx                # Email OTP verification
-│   │   │   ├── ForgotPassword.jsx     # Password reset request (simulated)
-│   │   │   ├── ResetPassword.jsx      # Password reset completion (simulated)
+│   │   │   ├── ForgotPassword.jsx     # Password reset request (wired to /api/v1/auth/forgot-password)
+│   │   │   ├── ResetPassword.jsx      # Password reset completion (wired to /api/v1/auth/reset-password)
 │   │   │   └── Onboarding.jsx         # Multi-step business context setup wizard
 │   │   ├── components/                # Landing page presentation blocks (Hero, Features, Pricing)
 │   │   └── pages/                     # Routed marketing views (Home, About, Contact)
@@ -205,10 +206,10 @@ some/
 | `/signup` | `Signup.jsx` | Standalone | Public | **Production-Ready** (wires `/api/v1/auth/register`) |
 | `/login` | `Login.jsx` | Standalone | Public | **Production-Ready** (wires `/api/v1/auth/login`) |
 | `/otp` | `Otp.jsx` | Standalone | Public | **Production-Ready** (wires `/api/v1/auth/verify-email`) |
-| `/forgot-password` | `ForgotPassword.jsx` | Standalone | Public | **Simulated** (`console.log`, no API call) |
-| `/reset-password/:token`| `ResetPassword.jsx`| Standalone | Public | **Simulated** (`console.log`, token ignored) |
+| `/forgot-password` | `ForgotPassword.jsx` | Standalone | Public | **Production-Ready** (wires `/api/v1/auth/forgot-password`) |
+| `/reset-password/:token`| `ResetPassword.jsx`| Standalone | Public | **Production-Ready** (wires `/api/v1/auth/reset-password` with route token) |
 | `/onboarding` | `Onboarding.jsx` | Standalone | Public / Semi-auth | **Production-Ready** (wires `/api/v1/profile`) |
-| `/dashboard` | `Overview.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (wires `/api/v1/dashboard`) |
+| `/dashboard` | `Overview.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (wires `/api/v1/dashboard`, dynamic greeting) |
 | `/dashboard/overview` | `Overview.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (alias for `/dashboard`) |
 | `/dashboard/documents` | `Documents.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (wires `/api/v1/documents`) |
 | `/dashboard/documents/:documentId` | `DocumentWorkspace.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (wired PUT content, autosave, AI) |
@@ -216,12 +217,12 @@ some/
 | `/dashboard/create-document` | `CreateDocument.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (blueprint selector gallery) |
 | `/dashboard/create-document/:templateId` | `DocumentSetup.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (wires `/api/v1/documents` POST) |
 | `/dashboard/company-profile` | `CompanyProfile.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (wires `/api/v1/profile`, Cloudinary) |
-| `/dashboard/brand-kit` | `BrandKit.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Simulated** (local state, `setTimeout`) |
-| `/dashboard/analytics` | `Analytics.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Mocked** (static hardcoded data array) |
-| `/dashboard/settings` | `SettingsLanding.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Simulated Shell** (redirects to `account`) |
-| `/dashboard/settings/account` | `AccountSettings.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Simulated** (`setTimeout(700)`, empty inputs) |
-| `/dashboard/settings/security`| `SecuritySettings.jsx`| `DashboardLanding.jsx` | Unprotected (Client) | **Simulated** (`setTimeout(900)`, fake email sent) |
-| `/dashboard/settings/notifications`| `NotificationSettings.jsx`| `DashboardLanding.jsx` | Unprotected (Client) | **Simulated** (`setTimeout(700)`, local state) |
+| `/dashboard/brand-kit` | `BrandKit.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (wires `/api/v1/brand-kit` GET/PUT) |
+| `/dashboard/analytics` | `Analytics.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (wires `/api/v1/analytics/summary`) |
+| `/dashboard/settings` | `SettingsLanding.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (tabs wrapper for account/security/notifications) |
+| `/dashboard/settings/account` | `AccountSettings.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (wires `/api/v1/user/me` GET/PATCH) |
+| `/dashboard/settings/security`| `SecuritySettings.jsx`| `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (wires `/api/v1/auth/forgot-password`) |
+| `/dashboard/settings/notifications`| `NotificationSettings.jsx`| `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (wires `/api/v1/user/notification-preferences`) |
 | `/dashboard/help` | `Help.jsx` | `DashboardLanding.jsx` | Unprotected (Client) | **Production-Ready** (static FAQ and resources) |
 | `/admin` | `AdminOverview.jsx` | `DashboardLanding.jsx` (admin) | Unprotected (Client) | **Mocked** (static metric cards) |
 | `/admin/overview` | `AdminOverview.jsx` | `DashboardLanding.jsx` (admin) | Unprotected (Client) | **Mocked** (alias route for admin) |
@@ -319,23 +320,23 @@ Prefix: /api/v1
 | **Auth** | `POST` | `/auth/logout` | `logout()` | `DashboardHeader.jsx` |
 | **Auth** | `POST` | `/auth/verify-email` | `verifyEmail(payload)` | `Otp.jsx` |
 | **Auth** | `POST` | `/auth/resend-verification` | `resendVerification(payload)` | `Otp.jsx` |
-| **Auth** | `POST` | `/auth/forgot-password` | `forgotPassword(payload)` | **None** (`ForgotPassword.jsx` simulated) |
-| **Auth** | `POST` | `/auth/reset-password` | `resetPassword(payload)` | **None** (`ResetPassword.jsx` simulated) |
+| **Auth** | `POST` | `/auth/forgot-password` | `forgotPassword(payload)` | `ForgotPassword.jsx`, `SecuritySettings.jsx` |
+| **Auth** | `POST` | `/auth/reset-password` | `resetPassword(payload)` | `ResetPassword.jsx` |
 | **Auth** | `POST` | `/auth/google` | `googleAuth(payload)` | `GoogleAuthButton.jsx` |
 | **Auth** | `POST` | `/auth/refresh` | `refreshToken(payload)` | `api.js` (Response Interceptor) |
 | **Auth** | `POST` | `/admin/register` | `adminRegister(payload)` | **None** |
-| **User** | `GET` | `/user/me` | `getCurrentUser()` | **None** |
-| **User** | `PATCH` | `/user/me` | `updateCurrentUser(payload)` | **None** |
-| **User** | `GET` | `/user/notification-preferences`| `getNotificationPreferences()` | **None** (`NotificationSettings` simulated) |
-| **User** | `PUT` | `/user/notification-preferences`| `updateNotificationPreferences(p)`| **None** (`NotificationSettings` simulated) |
+| **User** | `GET` | `/user/me` | `getCurrentUser()` | `AccountSettings.jsx`, `DashboardLanding.jsx` |
+| **User** | `PATCH` | `/user/me` | `updateCurrentUser(payload)` | `AccountSettings.jsx` |
+| **User** | `GET` | `/user/notification-preferences`| `getNotificationPreferences()` | `NotificationSettings.jsx` |
+| **User** | `PUT` | `/user/notification-preferences`| `updateNotificationPreferences(p)`| `NotificationSettings.jsx` |
 | **Profile**| `GET` | `/profile` | `getUserProfile()` | `DashboardLanding.jsx`, `Workspace.jsx` |
 | **Profile**| `POST` | `/profile` | `createUserProfile(payload)` | `Onboarding.jsx` |
 | **Profile**| `PATCH`| `/profile` | `updateUserProfile(payload)` | `CompanyProfile.jsx` |
 | **Profile**| `PATCH`| `/profile/:field` | `updateProfileField(field, val)` | `CompanyProfile.jsx` |
 | **Profile**| `POST` | `/profile/business-context` | `saveBusinessContext(payload)` | `CompanyProfile.jsx` |
 | **Profile**| `POST` | `/profile/ai-complete` | `createAiProfile(payload)` | `Onboarding.jsx` |
-| **BrandKit**| `GET` | `/brand-kit` | `getBrandKit()` | `DocumentWorkspace.jsx` |
-| **BrandKit**| `PUT` | `/brand-kit` | `updateBrandKit(payload)` | **None** (`BrandKit.jsx` simulated) |
+| **BrandKit**| `GET` | `/brand-kit` | `getBrandKit()` | `DocumentWorkspace.jsx`, `BrandKit.jsx` |
+| **BrandKit**| `PUT` | `/brand-kit` | `updateBrandKit(payload)` | `BrandKit.jsx` |
 | **Blueprints**| `GET` | `/blueprints` | `getBlueprints()` | `CreateDocument.jsx` |
 | **Blueprints**| `GET` | `/blueprints/:documentType` | `getBlueprintByType(type)` | `DocumentSetup.jsx` |
 | **Drafts** | `POST` | `/document-drafts` | `createDocumentDraft(payload)` | `DocumentSetup.jsx` |
@@ -350,7 +351,7 @@ Prefix: /api/v1
 | **Documents**| `PATCH`| `/documents/:id/status` | `updateDocumentStatus(id, p)` | `Documents.jsx` |
 | **Documents**| `POST` | `/documents/:id/duplicate` | `duplicateDocument(id)` | `Documents.jsx`, `Overview.jsx` |
 | **Documents**| `DELETE`| `/documents/:id` | `deleteDocument(id)` | `Documents.jsx`, `Overview.jsx` |
-| **Documents**| `POST` | `/documents/:id/regenerate-section`| `regenerateDocumentSection(id, p)`| `DocumentWorkspace.jsx` (AI Action) |
+| **Documents**| `POST` | `/documents/:id/regenerate-section`| `regenerateDocumentSection(id, p)`| `DocumentWorkspace.jsx` (Strict `{ sectionKey }`) |
 | **Documents**| `POST` | `/documents/:id/assistant-action` | `documentAssistantAction(id, p)` | `DocumentWorkspace.jsx` (AI Action) |
 | **Documents**| `GET` | `/documents/:id/revisions` | `getDocumentRevisions(id)` | **None** (Revisions drawer not mounted) |
 | **Documents**| `POST` | `/documents/:id/revert` | `revertDocument(id, p)` | **None** |
@@ -358,7 +359,7 @@ Prefix: /api/v1
 | **Documents**| `PATCH`| `/documents/:id/guidance/:flagId` | `updateDocumentGuidance(id, f, p)`| **None** |
 | **Documents**| `POST` | `/documents/:id/export` | `exportDocument(id, p)` | `ExportModal.jsx` (Primary cloud export) |
 | **Insights**| `GET` | `/dashboard` | `getDashboardInsights()` | `Overview.jsx` |
-| **Insights**| `GET` | `/analytics/summary` | `getAnalyticsSummary()` | **None** (`Analytics.jsx` uses mock data) |
+| **Insights**| `GET` | `/analytics/summary` | `getAnalyticsSummary()` | `Analytics.jsx` |
 | **Public** | `POST` | `/public/waitlist` | `joinWaitlist(payload)` | **None** |
 | **Public** | `POST` | `/public/contact` | `submitContactForm(payload)` | **None** (`Contact.jsx` is placeholder) |
 | **Admin** | `GET` | `/admin/overview` | `getAdminOverview()` | **None** (`AdminOverview.jsx` is mocked) |
@@ -395,9 +396,9 @@ Prefix: /api/v1
   - Google Social Login via `@react-oauth/google` popup.
   - Multi-step business onboarding capturing industry, company size, mission, and target market.
   - AI Profile Bio generation (`/api/v1/profile/ai-complete`).
-  - JWT token storage in cookies and automatic refresh on 401.
+  - Password recovery wired end-to-end: `ForgotPassword.jsx` calls `forgotPassword({ email })`, and `ResetPassword.jsx` extracts route `:token` to call `resetPassword({ token, newPassword })`.
 - **Gaps / Incomplete:**
-  - `ForgotPassword.jsx` and `ResetPassword.jsx` are simulated (`console.log`), bypassing the backend endpoints.
+  - Public marketing stubs (`About.jsx`, `Contact.jsx`).
 
 ### 6.2 Company Profile & Business Context Memory
 - **Status:** **Production-Ready**
@@ -460,32 +461,34 @@ Prefix: /api/v1
   - Re-fetching metrics automatically upon `ahiia:profile-updated`.
 
 ### 6.7 Brand Kit Surface
-- **Status:** **Simulated (Frontend Mockup)**
+- **Status:** **Production-Ready**
 - **Primary Files:** `BrandKit.jsx`, `brandKit.service.js`
 - **Current Reality:**
-  - `BrandKit.jsx` runs entirely in local React state with hardcoded company name `"SolarTech Nigeria"`.
-  - Clicking "Save Changes" triggers a local `setTimeout(800)` delay with no API interaction.
-  - **Backend Support:** `brandKit.service.js` exports `getBrandKit()` and `updateBrandKit(payload)` connected to `/api/v1/brand-kit`. `DocumentWorkspace.jsx` already consumes `getBrandKit()`.
-  - **Why Incomplete:** `BrandKit.jsx` was never wired to `getBrandKit` and `updateBrandKit`.
+  - `BrandKit.jsx` connects to `getBrandKit()` on component mount to populate typography, primary/secondary colors, tagline, and social links.
+  - "Save Changes" invokes `updateBrandKit(payload)` with native JSON array `socialLinks` (avoiding schema 400 errors).
+  - Integrates direct Cloudinary logo uploading and broadcasts `ahiia:profile-updated`.
 
 ### 6.8 User Settings Surface
-- **Status:** **Simulated (Frontend Mockup)**
-- **Primary Files:** `SettingsLanding.jsx`, `AccountSettings.jsx`, `SecuritySettings.jsx`, `NotificationSettings.jsx`, `user.service.js`
+- **Status:** **Production-Ready**
+- **Primary Files:** `SettingsLanding.jsx`, `AccountSettings.jsx`, `SecuritySettings.jsx`, `NotificationSettings.jsx`, `user.service.js`, `auth.service.js`
 - **Current Reality:**
-  - `AccountSettings.jsx`: Name and email fields initialize empty. Save executes `setTimeout(700)`.
-  - `SecuritySettings.jsx`: Clicking "Change password" executes `setTimeout(900)` and displays fake "Sent" badge.
-  - `NotificationSettings.jsx`: Preference toggles operate on local state. Save executes `setTimeout(700)`.
-  - **Backend Support:** `user.service.js` contains `getCurrentUser()`, `updateCurrentUser()`, `getNotificationPreferences()`, and `updateNotificationPreferences()`.
-  - **Why Incomplete:** Settings tab components were built as static UI presentations with simulated promises.
+  - `AccountSettings.jsx`: Fetches current user via `getCurrentUser()` on mount; updates user name via `updateCurrentUser({ fullName })` on save.
+  - `SecuritySettings.jsx`: Wires the "Change password" action directly to `forgotPassword({ email })` for authenticated password reset email dispatch.
+  - `NotificationSettings.jsx`: Fetches preferences via `getNotificationPreferences()` on mount; updates preferences live via `updateNotificationPreferences(prefs)`.
 
 ### 6.9 Analytics Surface
-- **Status:** **Mocked (Static Presentation)**
+- **Status:** **Production-Ready**
 - **Primary Files:** `Analytics.jsx`, `insights.service.js`
 - **Current Reality:**
-  - `Analytics.jsx` renders static constants (`ACTIVITY_STATS`, `BY_GENERATOR`, `RECENT_ACTIVITY`).
-  - Total documents hardcoded to 24; AI edits hardcoded to 38.
-  - **Backend Support:** `insights.service.js` exports `getAnalyticsSummary()` connected to `/api/v1/analytics/summary`.
-  - **Why Incomplete:** Analytics view was never wired to fetch from `getAnalyticsSummary()`.
+  - `Analytics.jsx` calls `getAnalyticsSummary()` on mount.
+  - Displays real document counts, AI edit counters, generator distributions, and live recent generation activity.
+
+### 6.10 Dashboard Header & Overview Shell
+- **Status:** **Production-Ready**
+- **Primary Files:** `DashboardHeader.jsx`, `Overview.jsx`
+- **Current Reality:**
+  - `DashboardHeader.jsx` provides a clean top bar with search, notification dropdown, and dark blue company profile dropdown pill. The redundant static white company badge has been cleanly removed to maintain seamless right-alignment.
+  - `Overview.jsx` dynamically calculates time-of-day greetings ("Good morning", "Good afternoon", "Good evening") based on the client browser's local time.
 
 ### 6.10 Admin Dashboard
 - **Status:** **Mocked & Unrouted**
@@ -519,12 +522,12 @@ Prefix: /api/v1
 | **Document Export** | **YES** | Dual pipeline: Cloud API first, client engine fallback. | None. | `ExportModal.jsx` |
 | **Company Profile** | **YES** | None. Wires PATCH endpoints, Cloudinary logo uploads. | None. | `CompanyProfile.jsx` |
 | **Authentication** | **YES** | None. Register, Login, OTP, Google OAuth fully wired. | None. | `Login.jsx`, `Signup.jsx`, `Otp.jsx` |
-| **Password Recovery** | **NO** | `ForgotPassword.jsx` & `ResetPassword.jsx` use `console.log`. | `/auth/forgot-password`, `/auth/reset-password` | `ForgotPassword.jsx`, `ResetPassword.jsx` |
-| **Brand Kit** | **NO** | `BrandKit.jsx` runs local state, `setTimeout(800)` save. | `GET/PUT /api/v1/brand-kit` | `BrandKit.jsx`, `brandKit.service.js` |
-| **Account Settings** | **NO** | Empty input state, `setTimeout(700)` save. | `GET/PATCH /api/v1/user/me` | `AccountSettings.jsx`, `user.service.js` |
-| **Security Settings** | **NO** | `setTimeout(900)` fake reset email dispatch. | `/auth/forgot-password` | `SecuritySettings.jsx` |
-| **Notification Settings**| **NO** | Local toggle state, `setTimeout(700)` save. | `GET/PUT /user/notification-preferences` | `NotificationSettings.jsx`, `user.service.js` |
-| **Analytics Dashboard** | **NO** | 100% hardcoded stats (24 docs, 38 AI edits). | `GET /api/v1/analytics/summary` | `Analytics.jsx`, `insights.service.js` |
+| **Password Recovery** | **YES** | None. Wires `forgotPassword` & `resetPassword`. | None. | `ForgotPassword.jsx`, `ResetPassword.jsx` |
+| **Brand Kit** | **YES** | None. Wires `getBrandKit` & `updateBrandKit`. | None. | `BrandKit.jsx`, `brandKit.service.js` |
+| **Account Settings** | **YES** | None. Wires `getCurrentUser` & `updateCurrentUser`.| None. | `AccountSettings.jsx`, `user.service.js` |
+| **Security Settings** | **YES** | None. Wires password reset via `forgotPassword`. | None. | `SecuritySettings.jsx`, `auth.service.js` |
+| **Notification Settings**| **YES** | None. Wires `getNotificationPreferences` & updates. | None. | `NotificationSettings.jsx`, `user.service.js` |
+| **Analytics Dashboard** | **YES** | None. Wires `getAnalyticsSummary()` live stats. | None. | `Analytics.jsx`, `insights.service.js` |
 | **Admin Overview** | **NO** | Static mock metrics (1,420 users, 99.98% uptime). | `GET /api/v1/admin/overview` | `AdminOverview.jsx`, `admin.service.js` |
 | **Admin Management** | **NO** | Unrouted in `App.jsx` (Dead ends). | `/admin/users`, `/admin/documents`, etc. | `SideBar.jsx`, `admin.service.js` |
 | **Document Guidance** | **NO** | Guidance drawer component not yet mounted to workspace. | `GET/PATCH /documents/:id/guidance` | `document.service.js` |
@@ -637,16 +640,20 @@ sequenceDiagram
     autonumber
     actor User
     participant Workspace as DocumentWorkspace.jsx
+    participant Config as documentTemplates.js
     participant DocSvc as document.service.js
     participant Backend as Remote API (/regenerate-section)
 
-    User->>Workspace: Selects section & submits AI prompt
+    User->>Workspace: Selects section & clicks action (e.g., "Change tone")
     Workspace->>Workspace: isAiProcessing = true, saveStatus = "saving"
-    Workspace->>DocSvc: regenerateDocumentSection(documentId, { sectionKey, prompt })
-    DocSvc->>Backend: POST /api/v1/documents/:id/regenerate-section
-    Backend-->>DocSvc: 200 OK { section: { paragraphs, ... } }
-    DocSvc-->>Workspace: Real AI Section payload
-    Workspace->>Workspace: Merges real AI text into section state
+    Workspace->>Config: resolveSectionKey(targetSec, docType)
+    Config-->>Workspace: Blueprint camelCase key (e.g., "executiveSummary")
+    Workspace->>DocSvc: regenerateDocumentSection(documentId, { sectionKey })
+    DocSvc->>Backend: POST /api/v1/documents/:id/regenerate-section { sectionKey }
+    Backend-->>DocSvc: 200 OK { revisionId, actionApplied, sectionKey, content }
+    DocSvc-->>Workspace: aiData
+    Workspace->>Workspace: Parses content & replaces section paragraphs/steps/bullets
+    Workspace->>Workspace: Increments revisionCount
     Workspace->>DocSvc: Auto-persists via updateDocumentContent(documentId, payload)
     DocSvc->>Backend: PUT /api/v1/documents/:id/content
     Workspace->>User: toast.success("Updated section with AI")
@@ -729,13 +736,11 @@ graph TD
    - **Remedy:** Remove `VITE_CLOUDINARY_API_SECRET` from `.env.example`. Cloudinary uploads use unsigned presets and require only `VITE_CLOUDINARY_CLOUD_NAME` and `VITE_CLOUDINARY_UPLOAD_PRESET`.
 
 ### 10.2 Technical Debt
-1. **Unused Code & Mocked Secondary Surfaces:**
-   - `BrandKit.jsx`, `AccountSettings.jsx`, `SecuritySettings.jsx`, `NotificationSettings.jsx`, and `Analytics.jsx` use simulated promises and hardcoded data even though backend endpoints already exist in the service layer.
-2. **Dead Admin Navigation Links:**
+1. **Dead Admin Navigation Links:**
    - `SideBar.jsx` advertises `/admin/users`, `/admin/verifications`, `/admin/templates`, and `/admin/analytics`, but none of these routes exist in `App.jsx`.
-3. **Redundant Installed Package:**
+2. **Redundant Installed Package:**
    - `package.json` installs both `react-cookie` and `react-cookies`. Only `react-cookie` is imported. `react-cookies` is dead weight.
-4. **Absence of Client Telemetry & Observability:**
+3. **Absence of Client Telemetry & Observability:**
    - No crash-reporting SDK (Sentry, LogRocket, Datadog) is installed. Client errors and failed network calls are logged solely to user browser consoles.
 
 ---
@@ -769,24 +774,25 @@ graph TD
 - **Decision:** Server mutation endpoints (Document Creation, Content PUT, AI Actions) MUST NOT catch errors and fabricate synthetic mock IDs or strings (`bp_${Date.now()}`).
 - **Rationale:** Synthetic fallbacks mask backend outages, produce phantom state, and mislead users and developers. Real errors must be surfaced honestly via toast notifications while preserving user input buffers.
 
+### ADR-7: Blueprint SectionKey Normalization for AI Regeneration
+- **Decision:** Section regeneration via `POST /api/v1/documents/:id/regenerate-section` MUST resolve blueprint camelCase keys (e.g. `executiveSummary`, `scopeOfWork`, `timeline`, `theProcess`) via `resolveSectionKey(section, docType)` and send strictly `{ sectionKey: string }`.
+- **Rationale:** The remote document blueprint validator validates against registered blueprint section keys. Kebab-case IDs (`"executive-summary"`) trigger `SECTION_NOT_FOUND`, and extraneous properties (`prompt`, `sectionId`) violate the schema.
+
+### ADR-8: Native JSON Payloads for Structured Collections
+- **Decision:** Structured nested collections (e.g., `socialLinks` in `/api/v1/brand-kit`, `structuredInputs` in `/api/v1/documents`) MUST be transmitted as native JSON objects or arrays, NEVER double-encoded with `JSON.stringify`.
+- **Rationale:** Backend schema validation checks that arrays and objects match native JSON data structures. Stringified JSON causes 400 Bad Request errors (`INVALID_SOCIAL_LINKS`).
+
 ---
 
 ## 12. Prioritized Implementation Roadmap & Sequencing
 
-### Phase 1: High-Impact Service Wiring (Zero New Backend Requirements)
-*All target endpoints already exist in `src/services/*` and `src/api/endpoints.js`.*
-1. **Wire Brand Kit Surface (`BrandKit.jsx`):**
-   - Connect to `getBrandKit()` on mount.
-   - Wire `handleSave` to `updateBrandKit({ primaryColor, secondaryColor, font, tagline, logoUrl })`.
-   - Eliminate hardcoded company name and `setTimeout(800)`.
-2. **Wire User Settings (`AccountSettings.jsx`, `NotificationSettings.jsx`):**
-   - In `AccountSettings.jsx`, call `getCurrentUser()` on mount and `updateCurrentUser({ name })` on save.
-   - In `NotificationSettings.jsx`, call `getNotificationPreferences()` on mount and `updateNotificationPreferences(prefs)` on toggle.
-3. **Wire Analytics Dashboard (`Analytics.jsx`):**
-   - Replace static mock constants with `getAnalyticsSummary()` from `insights.service.js`.
-4. **Wire Password Recovery (`ForgotPassword.jsx`, `ResetPassword.jsx`):**
-   - Wire `ForgotPassword.jsx` to `forgotPassword({ email })`.
-   - Wire `ResetPassword.jsx` to extract route `:token` and call `resetPassword({ token, newPassword })`.
+### Phase 1: High-Impact Service Wiring (COMPLETED)
+*All target endpoints have been connected and verified.*
+- [x] **Brand Kit Surface (`BrandKit.jsx`):** Connected to `getBrandKit()` on mount and `updateBrandKit()` on save.
+- [x] **User Settings (`AccountSettings.jsx`, `NotificationSettings.jsx`, `SecuritySettings.jsx`):** Connected to `getCurrentUser()`, `updateCurrentUser()`, `getNotificationPreferences()`, `updateNotificationPreferences()`, and `forgotPassword()`.
+- [x] **Analytics Dashboard (`Analytics.jsx`):** Connected to live metrics via `getAnalyticsSummary()`.
+- [x] **Password Recovery (`ForgotPassword.jsx`, `ResetPassword.jsx`):** Connected to `forgotPassword({ email })` and `resetPassword({ token, newPassword })`.
+- [x] **Section Regeneration Normalization (`DocumentWorkspace.jsx`):** Blueprint section key resolution and payload sanitization `{ sectionKey }`.
 
 ### Phase 2: Workspace Enhancements & Secondary Drawers
 1. **Mount Document Guidance Drawer in `DocumentWorkspace.jsx`:**
@@ -840,3 +846,4 @@ This document is not a historical artifact; it is the **authoritative blueprint 
 | **Oct 25, 2026** | `1.0.0` | Initial comprehensive system audit across all 74 frontend source files. | System Architect |
 | **Oct 25, 2026** | `1.1.0` | Documented persistence layer implementation (`PUT /content`, autosave, dirty state, real AI responses). Removed synthetic `bp_*` generation fallbacks. | Lead Engineer |
 | **Oct 25, 2026** | `2.0.0` | Evolved document into the definitive living source of truth for the entire project. Added comprehensive feature audit matrix, catalog of disconnected endpoints, detailed sequence diagrams, ADRs, risk analysis, and maintenance protocol. | Principal Architect |
+| **Oct 26, 2026** | `2.1.0` | Documented completion of P1 surface wiring (Brand Kit, Account, Security, Notifications, Analytics, Password Recovery). Added ADR-7 (Blueprint SectionKey Normalization) and ADR-8 (Native JSON Payloads). Documented header streamlining and dynamic Overview greeting. | Staff Engineer |

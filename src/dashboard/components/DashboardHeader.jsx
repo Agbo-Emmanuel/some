@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Search,
@@ -9,7 +9,6 @@ import {
   User,
   Settings,
   CheckCircle2,
-  Building2,
 } from "lucide-react";
 import { useCookies } from "react-cookie";
 import { getUserProfile } from "../../services/profile.service";
@@ -224,33 +223,6 @@ const DashboardHeader = ({
             </div>
           )}
         </div>
-
-        {/* Company Name Badge */}
-        {companyName && (
-          <div className="hidden lg:flex items-center gap-2.5 px-3 py-1.5 bg-white border border-slate-200/80 rounded-2xl shadow-xs">
-            <div className="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-[10px] overflow-hidden shrink-0">
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt={companyName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-800 max-w-[130px] truncate leading-tight">
-                {companyName}
-              </p>
-              {industry && (
-                <p className="text-[10px] text-slate-400 max-w-[130px] truncate leading-none">
-                  {industry}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Profile Pill Dropdown */}
         <div className="relative" ref={profileRef}>

@@ -162,13 +162,19 @@ export const revertDocument = async (id, payload) => {
 
 /**
  * Regenerate a specific section of a document.
+ * Conforms to POST /api/v1/documents/{id}/regenerate-section schema: { sectionKey: "string" }
  * @param {string} id
- * @param {Object} payload
+ * @param {Object|string} payload - { sectionKey } or string
  */
 export const regenerateDocumentSection = async (id, payload) => {
+  const sectionKey =
+    typeof payload === "string"
+      ? payload
+      : payload?.sectionKey || payload?.key || payload?.sectionId;
+
   const response = await api.post(
     ENDPOINTS.DOCUMENT_REGENERATE_SECTION(id),
-    payload,
+    { sectionKey },
   );
   return response.data;
 };

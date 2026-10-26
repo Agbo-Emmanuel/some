@@ -210,3 +210,42 @@ export const DOCUMENT_TYPE_MAP = {
   businessplan: "BusinessPlan",
 };
 
+/**
+ * Resolves a section object to the backend blueprint section key (e.g. "executiveSummary")
+ * @param {Object} section
+ * @param {string} [docType]
+ * @returns {string}
+ */
+export const resolveSectionKey = (section, docType) => {
+  if (!section) return "";
+  if (section.sectionKey) return section.sectionKey;
+  if (section.key) return section.key;
+
+  const raw = section.id || section.title || "";
+  const camelCandidate = raw
+    .replace(/[-_\s]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ""))
+    .replace(/^(.)/, (c) => c.toLowerCase());
+
+  const template = getTemplate(docType);
+  if (template) {
+    const allSections = [
+      ...(template.requiredSections || []),
+      ...(template.optionalSections || []),
+    ];
+
+    const exactMatch = allSections.find(
+      (s) => s.key === camelCandidate || s.key === section.id
+    );
+    if (exactMatch) return exactMatch.key;
+
+    const labelMatch = allSections.find(
+      (s) =>
+        s.label?.toLowerCase().replace(/[^a-z0-9]/g, "") ===
+        section.title?.toLowerCase().replace(/[^a-z0-9]/g, "")
+    );
+    if (labelMatch) return labelMatch.key;
+  }
+
+  return camelCandidate;
+};
+
