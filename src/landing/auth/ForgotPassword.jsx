@@ -61,9 +61,9 @@ const ForgotPassword = () => {
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#0A0F2C] via-[#141B4D] to-[#1E2A78] px-4 py-8 sm:px-8 sm:py-12">
-      <div className="mx-auto flex max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl lg:h-[720px] lg:flex-row">
+      <div className="mx-auto flex max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl lg:h-[780px] lg:flex-row">
         {/* left panel */}
-        <div className="relative flex flex-col justify-between overflow-hidden bg-[#0A0F2C] p-8 sm:p-10 lg:w-[45%]">
+        <div className="relative flex flex-col justify-between overflow-hidden bg-[#0A0F2C] p-8 sm:p-10 lg:w-[42%]">
           <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full border border-white/5" />
           <div className="pointer-events-none absolute right-10 top-40 h-40 w-40 rotate-12 border border-white/5" />
           <div className="pointer-events-none absolute -bottom-10 left-0 h-52 w-52 rotate-45 border border-white/5" />
@@ -114,7 +114,7 @@ const ForgotPassword = () => {
 
         {/* right panel */}
         <div className="flex flex-1 overflow-y-auto p-8 sm:p-10 lg:p-12">
-          <div className="mx-auto w-full max-w-md">
+          <div className="mx-auto flex w-full max-w-md flex-col">
             {/* <div className="flex justify-end">
               <a
                 href="#"

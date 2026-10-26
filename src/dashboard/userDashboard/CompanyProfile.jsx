@@ -617,7 +617,7 @@ const CompanyProfile = () => {
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="e.g. Acme Innovations"
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#131B4D]/15 focus:border-[#131B4D]/40 transition-shadow"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#131B4D]/15 focus:border-[#131B4D]/40 transition-shadow"
               />
             </div>
 
@@ -629,7 +629,7 @@ const CompanyProfile = () => {
                 <select
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
-                  className="w-full appearance-none px-4 py-2.5 pr-9 rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#131B4D]/15 focus:border-[#131B4D]/40 transition-shadow"
+                  className="w-full appearance-none px-3.5 py-2.5 pr-9 rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#131B4D]/15 focus:border-[#131B4D]/40 transition-shadow"
                 >
                   {industryOptions.map((opt) => (
                     <option key={opt} value={opt}>
@@ -650,7 +650,7 @@ const CompanyProfile = () => {
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
                 placeholder="Describe what your company does..."
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#131B4D]/15 focus:border-[#131B4D]/40 transition-shadow resize-none"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#131B4D]/15 focus:border-[#131B4D]/40 transition-shadow resize-none"
               />
             </div>
 

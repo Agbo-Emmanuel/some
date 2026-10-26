@@ -322,7 +322,7 @@ const Card = ({
 
 const DocumentLibrary = () => {
   return (
-    <section className="w-full bg-[#F7F8FB] px-4 py-16 sm:px-8 sm:py-20 lg:px-12">
+    <section className="w-full bg-[#F7F8FB] px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
       <div className="mx-auto max-w-5xl">
         <div className="flex flex-col items-center text-center mb-12 sm:mb-16">
           <span className="mb-5 inline-flex items-center rounded-full bg-indigo-100 px-4 py-1.5 text-xs font-semibold text-indigo-600">

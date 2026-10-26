@@ -11,7 +11,7 @@ const AdminOverview = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {[
           { label: "Total Users", val: "1,420", icon: Users },
           { label: "Pending Verifications", val: "12", icon: ShieldCheck },

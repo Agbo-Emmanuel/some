@@ -113,7 +113,7 @@ const FeaturesSection = () => {
     <section
       id="features"
       ref={ref}
-      className="w-full relative bg-slate-50 px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-26"
+      className="w-full relative bg-slate-50 px-4 sm:px-6 lg:px-8 py-16 sm:py-20"
     >
       <div className="mx-auto max-w-5xl text-center">
         <Reveal show={inView} delay={0} className="flex justify-center">
@@ -136,7 +136,7 @@ const FeaturesSection = () => {
         </Reveal>
       </div>
 
-      <div className="mx-auto mt-10 sm:mt-12 grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto mt-10 sm:mt-12 grid max-w-5xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {FEATURES.map((feature, i) => (
           <FeatureCard
             key={feature.title}

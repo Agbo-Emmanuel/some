@@ -326,8 +326,9 @@ export const serializeSectionToString = (sec) => {
 
 /**
  * Builds the PUT /api/v1/documents/{id}/content payload.
- * Maps every section to its blueprint section key with a non-empty string value,
- * and ensures required blueprint sections exist.
+ * Maps every section to its blueprint section key with a non-empty string value.
+ * Only sections that actually exist in the document are sent - no placeholder
+ * sections are injected (generated blueprint keys can differ from setup-form keys).
  * @param {Array} sections
  * @param {string} [docType]
  * @returns {Object} Section-keyed JSON object with non-empty string values
@@ -342,15 +343,6 @@ export const buildDocumentContentPayload = (sections, docType) => {
       contentMap[key] = strVal && strVal.trim() ? strVal.trim() : "Details to be provided.";
     }
   });
-
-  const template = getTemplate(docType);
-  if (template?.requiredSections) {
-    template.requiredSections.forEach((reqSec) => {
-      if (!contentMap[reqSec.key] || !contentMap[reqSec.key].trim()) {
-        contentMap[reqSec.key] = `${reqSec.label} content to be provided.`;
-      }
-    });
-  }
 
   return contentMap;
 };

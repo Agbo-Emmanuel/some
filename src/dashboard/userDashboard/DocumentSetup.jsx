@@ -302,7 +302,7 @@ const DocumentSetup = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-12">
+    <div className="max-w-7xl mx-auto pb-12">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium mb-3">
         <Link

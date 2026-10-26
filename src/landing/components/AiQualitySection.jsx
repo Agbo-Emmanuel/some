@@ -119,7 +119,7 @@ const ProposalCard = () => (
 
 const AiQualitySection = () => {
   return (
-    <section className="w-full bg-white px-4 py-16 sm:px-8 sm:py-20 lg:px-12">
+    <section className="w-full bg-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
       <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-16">
         {/* left column */}
         <div>

@@ -49,227 +49,166 @@ import {
 } from "../../config/documentTemplates";
 
 // ============================================================================
-// Default initial proposal content mirroring reference design visual hierarchy
+// Generated content -> structured UI sections
+// ----------------------------------------------------------------------------
+// The workspace renders ONLY what the backend generated. There is no demo /
+// mock content anywhere in this file. The backend stores a section-keyed map
+// ({ [sectionKey]: string }) whose keys come from the document blueprint
+// (e.g. "coverPage", "executiveSummary"...). Each string is parsed into the
+// layout primitives the renderer already supports (paragraphs, bullets,
+// numbered steps, key/value rows) so generated text keeps the intended layout.
 // ============================================================================
-const DEFAULT_PROPOSAL_SECTIONS = [
-  {
-    id: "executive-summary",
-    sectionKey: "executiveSummary",
-    title: "Executive Summary",
-    isHighlighted: true,
-    paragraphs: [
-      "Ahiia Energy Services proposes the design and installation of a 50kW solar power system for Green Energy Solutions Ltd. The system is sized against twelve months of metered consumption and is intended to cut diesel spend while keeping critical operations running through grid outages.",
-      "The project will provide reliable electricity across the main production floor and administrative block, with a 24-month maintenance agreement covering monitoring, cleaning and performance reporting.",
-    ],
-  },
-  {
-    id: "scope-of-work",
-    sectionKey: "scopeOfWork",
-    title: "Scope of Work",
-    leadText: "The project will include:",
-    bullets: [
-      "Site assessment",
-      "System design",
-      "Equipment supply",
-      "Installation",
-      "Testing and commissioning",
-    ],
-  },
-  {
-    id: "pricing",
-    sectionKey: "pricing",
-    title: "Pricing",
-    tableRows: [
-      { item: "Solar panels", cost: "₦28,000,000" },
-      { item: "Inverter", cost: "₦7,500,000" },
-      { item: "Installation", cost: "₦4,500,000" },
-    ],
-    totalCost: "₦40,000,000",
-    note: "Pricing is valid for 30 days from the date of this proposal and is payable 40% on signing, 40% on delivery and 20% on handover.",
-  },
-  {
-    id: "timeline",
-    sectionKey: "timeline",
-    title: "Timeline",
-    tableRows: [
-      { milestone: "Project duration", duration: "8 weeks" },
-      { milestone: "Site assessment", duration: "Week 1" },
-      { milestone: "Equipment supply and installation", duration: "Weeks 2 – 6" },
-      { milestone: "Testing and commissioning", duration: "Weeks 7 – 8" },
-    ],
-  },
-];
+const BULLET_LINE_RE = /^\s*[-*\u2022\u2023\u25AA\u2013]\s+(.*)$/;
+const STEP_LINE_RE = /^\s*\d{1,2}[.)]\s+(.*)$/;
+const KEY_VALUE_LINE_RE = /^\s*([^:.!?]{1,48}):\s+(.+)$/;
+const MD_HEADING_RE = /^\s*#{1,6}\s+/;
 
-// ============================================================================
-// Default initial SOP content mirroring Corporate reference design
-// ============================================================================
-const DEFAULT_SOP_SECTIONS = [
-  {
-    id: "purpose-and-scope",
-    sectionKey: "theProcess",
-    title: "Purpose & Scope",
-    paragraphs: [
-      "This procedure covers the receipt, inspection and recording of all solar equipment arriving at the Ikeja store. It applies to every inbound delivery, including supplier shipments and site returns.",
-    ],
-  },
-  {
-    id: "responsibilities-and-requirements",
-    sectionKey: "responsibilitiesAndRequirements",
-    title: "Responsibilities & Requirements",
-    keyValueRows: [
-      { key: "Performed by", value: "Warehouse Officer" },
-      { key: "Approved by", value: "Warehouse Supervisor" },
-      { key: "When", value: "On every inbound delivery, before offload" },
-      {
-        key: "Required",
-        value: "Delivery note, intake log, torch, inspection checklist",
-      },
-    ],
-  },
-  {
-    id: "procedure",
-    sectionKey: "procedure",
-    title: "Procedure",
-    steps: [
-      "Confirm the delivery note against the purchase order before any item leaves the vehicle.",
-      "Inspect panel and inverter packaging for impact damage, water ingress or broken seals.",
-      "Count each line item and record quantities in the intake log.",
-      "Photograph any damage and raise a discrepancy note with the supplier the same day.",
-      "Move accepted stock to its bin location and update the stock record.",
-      "Submit the completed intake log to the Supervisor for approval.",
-    ],
-  },
-  {
-    id: "notes-and-exceptions",
-    sectionKey: "notesAndExceptions",
-    title: "Notes & Exceptions",
-    callouts: [
-      {
-        type: "warning",
-        title: "Do not offload",
-        content:
-          "If serial numbers do not match the delivery note, do not offload. Contact the Supervisor before accepting the shipment.",
-      },
-      {
-        type: "info",
-        title: "Out-of-hours deliveries",
-        content:
-          "Deliveries arriving after 18:00 are held sealed in the receiving bay and inspected at 08:00 the next working day.",
-      },
-    ],
-  },
-];
+const stripInlineMarkdown = (s) =>
+  String(s)
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .trim();
 
-// ============================================================================
-// Default initial Business Plan content mirroring Corporate reference design
-// ============================================================================
-const DEFAULT_BUSINESS_PLAN_SECTIONS = [
-  {
-    id: "executive-summary",
-    sectionKey: "documentBrief",
-    title: "Executive Summary",
-    paragraphs: [
-      "SolarTech Nigeria designs, installs and maintains commercial solar systems for businesses that need dependable power without relying on the grid. This plan covers the next three years of growth across the Southwest, funded by a combination of retained earnings and a ₦120,000,000 facility.",
-    ],
-  },
-  {
-    id: "market-and-customers",
-    sectionKey: "marketAndCustomers",
-    title: "Market & Customers",
-    leadText:
-      "Our customers are commercial operators spending ₦1,500,000 or more a month on diesel — manufacturing, cold chain, hospitality and light industrial parks.",
-    bullets: [
-      "Primary market: Lagos, Ogun and Oyo industrial corridors",
-      "Buying trigger: diesel cost, outage frequency, equipment damage",
-      "Competitors compete on equipment price; we compete on measured output",
-    ],
-  },
-  {
-    id: "operations-and-strategy",
-    sectionKey: "operationsAndStrategy",
-    title: "Operations & Strategy",
-    bullets: [
-      "Two installation crews expanding to four by Q3 2027",
-      "Monitoring desk covering every installed system under maintenance",
-      "Framework supply agreements for panels, inverters and storage",
-    ],
-  },
-  {
-    id: "financial-overview",
-    sectionKey: "financialInformation",
-    title: "Financial Overview",
-    isFinancialOverview: true,
-    keyValueRows: [
-      { key: "Revenue target — 2026", value: "₦480,000,000" },
-      { key: "Funding required", value: "₦120,000,000" },
-      { key: "Committed from retained earnings", value: "₦45,000,000" },
-      { key: "Facility sought", value: "₦75,000,000" },
-    ],
-    disclosure: {
-      title: "Figures provided by you",
-      content:
-        "Every number in this plan comes from the financial information you entered. Ahiia does not generate projections you did not supply.",
-    },
-  },
-];
+const toSectionId = (key) =>
+  String(key)
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
 
-// ============================================================================
-// Helper to parse a dictionary map of sections ({ [sectionKey]: string })
-// into structured UI sections array
-// ============================================================================
-const parseSectionMapToSections = (
-  map,
-  docIsBusinessPlan,
-  docIsSop,
-  docType
-) => {
-  if (!map || typeof map !== "object") return null;
+const humanizeSectionKey = (key) =>
+  String(key)
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^./, (c) => c.toUpperCase());
 
-  const baseSections = docIsBusinessPlan
-    ? DEFAULT_BUSINESS_PLAN_SECTIONS
-    : docIsSop
-      ? DEFAULT_SOP_SECTIONS
-      : DEFAULT_PROPOSAL_SECTIONS;
+// Non-string values (arrays / objects) are normalised to text first.
+const normalizeSectionValue = (value) => {
+  if (typeof value === "string") return value;
+  if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => (typeof v === "string" ? `\u2022 ${v}` : JSON.stringify(v)))
+      .join("\n");
+  }
+  if (typeof value === "object") {
+    return Object.entries(value)
+      .map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`)
+      .join("\n");
+  }
+  return String(value);
+};
 
-  const processedKeys = new Set();
+/**
+ * Parses a generated text block into renderer-friendly fields.
+ * Round-trips with serializeSectionToString (bullets "\u2022 ", steps "1. ", "Key: Value").
+ */
+const parseTextToSectionBody = (text) => {
+  const paragraphs = [];
+  const bullets = [];
+  const steps = [];
+  const keyValueRows = [];
 
-  const sections = baseSections.map((sec) => {
-    const key = sec.sectionKey || resolveSectionKey(sec, docType);
-    processedKeys.add(key);
-    processedKeys.add(sec.id);
+  const blocks = String(text || "")
+    .replace(/\r\n/g, "\n")
+    .split(/\n\s*\n+/)
+    .map((b) => b.trim())
+    .filter(Boolean);
 
-    const text = map[key] || map[sec.id];
-    if (typeof text === "string" && text.trim()) {
-      const paras = text
-        .split(/\n\n+/)
-        .map((p) => p.trim())
-        .filter(Boolean);
-      return {
-        ...sec,
-        paragraphs: paras.length > 0 ? paras : [text.trim()],
-      };
-    }
-    return sec;
-  });
+  blocks.forEach((block) => {
+    const lines = block
+      .split("\n")
+      .map((l) => l.replace(MD_HEADING_RE, "").trim())
+      .filter(Boolean);
 
-  // Any extra keys from the map that were not in baseSections
-  Object.entries(map).forEach(([k, v]) => {
-    if (!processedKeys.has(k) && typeof v === "string" && v.trim()) {
-      sections.push({
-        id: k.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(),
-        sectionKey: k,
-        title: k
-          .replace(/([A-Z])/g, " $1")
-          .replace(/^./, (s) => s.toUpperCase()),
-        paragraphs: v
-          .split(/\n\n+/)
-          .map((p) => p.trim())
-          .filter(Boolean),
+    const isKeyValueBlock =
+      lines.length >= 2 &&
+      lines.every(
+        (l) =>
+          KEY_VALUE_LINE_RE.test(l) &&
+          !BULLET_LINE_RE.test(l) &&
+          !STEP_LINE_RE.test(l)
+      );
+
+    if (isKeyValueBlock) {
+      lines.forEach((l) => {
+        const m = l.match(KEY_VALUE_LINE_RE);
+        keyValueRows.push({
+          key: stripInlineMarkdown(m[1]),
+          value: stripInlineMarkdown(m[2]),
+        });
       });
+      return;
     }
+
+    let buffer = [];
+    const flush = () => {
+      if (buffer.length) {
+        paragraphs.push(stripInlineMarkdown(buffer.join(" ")));
+        buffer = [];
+      }
+    };
+
+    lines.forEach((line) => {
+      const bullet = line.match(BULLET_LINE_RE);
+      if (bullet) {
+        flush();
+        bullets.push(stripInlineMarkdown(bullet[1]));
+        return;
+      }
+      const step = line.match(STEP_LINE_RE);
+      if (step) {
+        flush();
+        steps.push(stripInlineMarkdown(step[1]));
+        return;
+      }
+      buffer.push(line);
+    });
+    flush();
   });
 
-  return sections;
+  const body = {};
+  // A trailing "...:" paragraph directly introducing a list becomes its lead text
+  if (
+    bullets.length > 0 &&
+    paragraphs.length > 0 &&
+    paragraphs[paragraphs.length - 1].endsWith(":")
+  ) {
+    body.leadText = paragraphs.pop();
+  }
+  if (paragraphs.length > 0) body.paragraphs = paragraphs;
+  if (bullets.length > 0) body.bullets = bullets;
+  if (steps.length > 0) body.steps = steps;
+  if (keyValueRows.length > 0) body.keyValueRows = keyValueRows;
+
+  if (Object.keys(body).length === 0 && String(text || "").trim()) {
+    body.paragraphs = [String(text).trim()];
+  }
+  return body;
+};
+
+const buildSectionFromGenerated = (key, value) => {
+  const text = normalizeSectionValue(value).trim();
+  if (!text) return null;
+  return {
+    id: toSectionId(key),
+    sectionKey: key,
+    title: humanizeSectionKey(key),
+    ...(/executive\s*summary/i.test(humanizeSectionKey(key))
+      ? { isHighlighted: true }
+      : {}),
+    ...parseTextToSectionBody(text),
+  };
+};
+
+// Converts the backend section map into UI sections, preserving backend order.
+const parseSectionMapToSections = (map) => {
+  if (!map || typeof map !== "object" || Array.isArray(map)) return null;
+  return Object.entries(map)
+    .map(([key, value]) => buildSectionFromGenerated(key, value))
+    .filter(Boolean);
 };
 
 // Quick actions listed in reference design AI Assistant panel
@@ -294,59 +233,11 @@ const DocumentWorkspace = () => {
   // Route state passed from DocumentSetup if newly generated
   const navState = location.state || {};
 
-  const rawType = (
-    navState.docType ||
-    navState.documentType ||
-    ""
-  ).toLowerCase().replace(/[_\s]/g, "-");
-
-  const initialIsBusinessPlan =
-    rawType.includes("business-plan") ||
-    rawType.includes("businessplan") ||
-    (navState.docTitle &&
-      navState.docTitle.toLowerCase().includes("business plan")) ||
-    location.pathname.toLowerCase().includes("business-plan") ||
-    location.search.toLowerCase().includes("business-plan");
-
-  const initialDocType =
-    navState.docType ||
-    navState.documentType ||
-    (navState.docTitle &&
-    navState.docTitle.toLowerCase().includes("sop")
-      ? "SOP"
-      : null) ||
-    (location.pathname.toLowerCase().includes("sop") ||
-    location.search.toLowerCase().includes("sop")
-      ? "SOP"
-      : null);
-
-  const initialIsSop =
-    !initialIsBusinessPlan &&
-    (initialDocType === "SOP" ||
-      initialDocType === "sop" ||
-      (navState.docTitle &&
-        navState.docTitle.toLowerCase().includes("sop")) ||
-      location.pathname.toLowerCase().includes("sop") ||
-      location.search.toLowerCase().includes("sop"));
-
   // Document metadata state
   const [docData, setDocData] = useState(null);
-  const [docTitle, setDocTitle] = useState(
-    navState.docTitle ||
-      (initialIsBusinessPlan
-        ? "Growth & Funding Business Plan"
-        : initialIsSop
-          ? "Warehouse Intake SOP"
-          : "Solar Installation Proposal")
-  );
+  const [docTitle, setDocTitle] = useState(navState.docTitle || "");
   const [revisionCount, setRevisionCount] = useState(
-    navState.revisionCount !== undefined
-      ? navState.revisionCount
-      : initialIsBusinessPlan
-        ? 2
-        : initialIsSop
-          ? 2
-          : 6
+    navState.revisionCount ?? 0
   );
   const [saveStatus, setSaveStatus] = useState("saved"); // "saved" | "saving" | "unsaved" | "error"
   const [isDirty, setIsDirty] = useState(false);
@@ -354,7 +245,9 @@ const DocumentWorkspace = () => {
   const [saveError, setSaveError] = useState(null);
   const [isNotFound, setIsNotFound] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(
+    Boolean(documentId && documentId !== "new")
+  );
 
   const lastSavedSnapshotRef = useRef(null);
   const autosaveTimerRef = useRef(null);
@@ -376,14 +269,8 @@ const DocumentWorkspace = () => {
   // Centralized Export Modal state
   const [showExportModal, setShowExportModal] = useState(false);
 
-  // Editable sections
-  const [sections, setSections] = useState(
-    initialIsBusinessPlan
-      ? DEFAULT_BUSINESS_PLAN_SECTIONS
-      : initialIsSop
-        ? DEFAULT_SOP_SECTIONS
-        : DEFAULT_PROPOSAL_SECTIONS
-  );
+  // Editable sections - populated exclusively from generated backend content
+  const [sections, setSections] = useState([]);
   const [editingSectionId, setEditingSectionId] = useState(null);
   const [editingContent, setEditingContent] = useState({});
 
@@ -393,16 +280,14 @@ const DocumentWorkspace = () => {
     font: "Montserrat",
     primaryColor: "#0F172A",
     secondaryColor: "#2563EB",
-    tagline: "Clean power, built to last",
+    tagline: "",
   });
   const [companyProfile, setCompanyProfile] = useState({
-    companyName: "SolarTech Nigeria",
-    preparedFor: initialIsBusinessPlan
-      ? "Board and prospective lenders"
-      : "Green Energy Solutions Ltd.",
-    preparedBy: "SolarTech Nigeria",
-    processOwner: "Warehouse Supervisor, Ikeja store",
-    issuedBy: "SolarTech Nigeria Operations",
+    companyName: "",
+    preparedFor: "",
+    preparedBy: "",
+    processOwner: "",
+    issuedBy: "",
   });
 
   const styleMenuRef = useRef(null);
@@ -585,226 +470,31 @@ const DocumentWorkspace = () => {
                 loadedSections = doc.sections;
               }
 
-              let resolvedSections = loadedSections;
+              // Only generated content is ever shown. If the backend has no
+              // content yet, the workspace shows an empty state - never demo data.
+              const resolvedSections = Array.isArray(loadedSections)
+                ? loadedSections
+                : [];
+              setSections(resolvedSections);
 
-              if (loadedSections && loadedSections.length > 0) {
-                setSections(loadedSections);
-                if (doc.structuredInputs) {
-                  const inputs = doc.structuredInputs;
-                  if (
-                    inputs.clientName ||
-                    inputs.preparedFor ||
-                    inputs.companyName ||
-                    inputs.partyName
-                  ) {
-                    setCompanyProfile((prev) => ({
-                      ...prev,
-                      preparedFor:
-                        inputs.preparedFor ||
-                        inputs.clientName ||
-                        inputs.partyName ||
-                        prev.preparedFor,
-                      preparedBy:
-                        inputs.preparedBy ||
-                        inputs.companyName ||
-                        prev.preparedBy,
-                    }));
-                  }
-                  if (inputs.processOwner || inputs.performer) {
-                    setCompanyProfile((prev) => ({
-                      ...prev,
-                      processOwner:
-                        inputs.processOwner ||
-                        (inputs.performer
-                          ? `${inputs.performer}, Ikeja store`
-                          : prev.processOwner),
-                      issuedBy: inputs.issuedBy || prev.issuedBy,
-                    }));
-                  }
-                }
-              } else if (docIsBusinessPlan) {
-                const inputs = doc.structuredInputs || navState.structuredInputs || {};
-                const bpSecs = [];
-
-                // 1. Executive Summary
-                bpSecs.push({
-                  id: "executive-summary",
-                  title: "Executive Summary",
-                  paragraphs: [
-                    inputs.executiveSummary ||
-                      inputs.summary ||
-                      inputs.goal ||
-                      inputs.description ||
-                      inputs.documentBrief ||
-                      "SolarTech Nigeria designs, installs and maintains commercial solar systems for businesses that need dependable power without relying on the grid. This plan covers the next three years of growth across the Southwest, funded by a combination of retained earnings and a ₦120,000,000 facility.",
-                  ],
-                });
-
-                // 2. Market & Customers
-                bpSecs.push({
-                  id: "market-and-customers",
-                  title: "Market & Customers",
-                  leadText:
-                    inputs.targetMarket ||
-                    "Our customers are commercial operators spending ₦1,500,000 or more a month on diesel — manufacturing, cold chain, hospitality and light industrial parks.",
-                  bullets: [
-                    "Primary market: Lagos, Ogun and Oyo industrial corridors",
-                    "Buying trigger: diesel cost, outage frequency, equipment damage",
-                    "Competitors compete on equipment price; we compete on measured output",
-                  ],
-                });
-
-                // 3. Operations & Strategy
-                bpSecs.push({
-                  id: "operations-and-strategy",
-                  title: "Operations & Strategy",
-                  bullets: [
-                    "Two installation crews expanding to four by Q3 2027",
-                    "Monitoring desk covering every installed system under maintenance",
-                    "Framework supply agreements for panels, inverters and storage",
-                  ],
-                });
-
-                // 4. Financial Overview
-                bpSecs.push({
-                  id: "financial-overview",
-                  title: "Financial Overview",
-                  isFinancialOverview: true,
-                  keyValueRows: [
-                    {
-                      key: "Revenue target — 2026",
-                      value: inputs.revenueTarget
-                        ? `₦${Number(inputs.revenueTarget.toString().replace(/[^\d]/g, "") || 480000000).toLocaleString()}`
-                        : "₦480,000,000",
-                    },
-                    {
-                      key: "Funding required",
-                      value: inputs.fundingRequired
-                        ? `₦${Number(inputs.fundingRequired.toString().replace(/[^\d]/g, "") || 120000000).toLocaleString()}`
-                        : "₦120,000,000",
-                    },
-                    {
-                      key: "Committed from retained earnings",
-                      value: inputs.retainedEarnings || "₦45,000,000",
-                    },
-                    {
-                      key: "Facility sought",
-                      value: inputs.facilitySought || "₦75,000,000",
-                    },
-                  ],
-                  disclosure: {
-                    title: "Figures provided by you",
-                    content:
-                      "Every number in this plan comes from the financial information you entered. Ahiia does not generate projections you did not supply.",
-                  },
-                });
-
-                resolvedSections = bpSecs;
-                setSections(bpSecs);
-
-                if (inputs.clientName || inputs.preparedFor || inputs.companyName) {
-                  setCompanyProfile((prev) => ({
-                    ...prev,
-                    preparedFor: inputs.preparedFor || inputs.clientName || prev.preparedFor,
-                    preparedBy: inputs.preparedBy || inputs.companyName || prev.preparedBy,
-                  }));
-                }
-              } else if (docIsSop) {
-                const inputs = doc.structuredInputs || navState.structuredInputs || {};
-                const sopSecs = [];
-
-                // 1. Purpose & Scope
-                sopSecs.push({
-                  id: "purpose-and-scope",
-                  title: "Purpose & Scope",
-                  paragraphs: [
-                    inputs.purpose ||
-                      "This procedure covers the receipt, inspection and recording of all solar equipment arriving at the Ikeja store. It applies to every inbound delivery, including supplier shipments and site returns.",
-                  ],
-                });
-
-                // 2. Responsibilities & Requirements
-                sopSecs.push({
-                  id: "responsibilities-and-requirements",
-                  title: "Responsibilities & Requirements",
-                  keyValueRows: [
-                    { key: "Performed by", value: inputs.performer || "Warehouse Officer" },
-                    { key: "Approved by", value: inputs.approvedBy || "Warehouse Supervisor" },
-                    { key: "When", value: inputs.when || "On every inbound delivery, before offload" },
-                    { key: "Required", value: inputs.tools || "Delivery note, intake log, torch, inspection checklist" },
-                  ],
-                });
-
-                // 3. Procedure Steps
-                const stepList =
-                  Array.isArray(inputs.steps) && inputs.steps.length > 0 && inputs.steps.some((s) => s?.trim())
-                    ? inputs.steps.filter(Boolean)
-                    : [
-                        "Confirm the delivery note against the purchase order before any item leaves the vehicle.",
-                        "Inspect panel and inverter packaging for impact damage, water ingress or broken seals.",
-                        "Count each line item and record quantities in the intake log.",
-                        "Photograph any damage and raise a discrepancy note with the supplier the same day.",
-                        "Move accepted stock to its bin location and update the stock record.",
-                        "Submit the completed intake log to the Supervisor for approval.",
-                      ];
-                sopSecs.push({
-                  id: "procedure",
-                  title: "Procedure",
-                  steps: stepList,
-                });
-
-                // 4. Notes & Exceptions
-                sopSecs.push({
-                  id: "notes-and-exceptions",
-                  title: "Notes & Exceptions",
-                  callouts: [
-                    {
-                      type: "warning",
-                      title: "Do not offload",
-                      content:
-                        inputs.warning ||
-                        "If serial numbers do not match the delivery note, do not offload. Contact the Supervisor before accepting the shipment.",
-                    },
-                    {
-                      type: "info",
-                      title: "Out-of-hours deliveries",
-                      content:
-                        inputs.outOfHours ||
-                        inputs.notes ||
-                        "Deliveries arriving after 18:00 are held sealed in the receiving bay and inspected at 08:00 the next working day.",
-                    },
-                  ],
-                });
-
-                resolvedSections = sopSecs;
-                setSections(sopSecs);
-
-                if (inputs.processOwner || inputs.performer) {
-                  setCompanyProfile((prev) => ({
-                    ...prev,
-                    processOwner:
-                      inputs.processOwner ||
-                      (inputs.performer ? `${inputs.performer}, Ikeja store` : prev.processOwner),
-                    issuedBy: inputs.issuedBy || prev.issuedBy,
-                  }));
-                }
-              } else if (doc.structuredInputs) {
-                const inputs = doc.structuredInputs;
-                const client =
+              // Header metadata comes from the user's own structured inputs
+              const inputs =
+                doc.structuredInputs || navState.structuredInputs || {};
+              setCompanyProfile((prev) => ({
+                ...prev,
+                preparedFor:
+                  inputs.preparedFor ||
                   inputs.clientName ||
                   inputs.clientCompany ||
                   inputs.partyName ||
-                  "Green Energy Solutions Ltd.";
-                setCompanyProfile((prev) => ({
-                  ...prev,
-                  preparedFor: client,
-                }));
-                resolvedSections = DEFAULT_PROPOSAL_SECTIONS;
-                setSections(DEFAULT_PROPOSAL_SECTIONS);
-              } else {
-                resolvedSections = DEFAULT_PROPOSAL_SECTIONS;
-                setSections(DEFAULT_PROPOSAL_SECTIONS);
-              }
+                  inputs.otherParty ||
+                  prev.preparedFor,
+                preparedBy:
+                  inputs.preparedBy || inputs.companyName || prev.preparedBy,
+                processOwner:
+                  inputs.processOwner || inputs.performer || prev.processOwner,
+                issuedBy: inputs.issuedBy || prev.issuedBy,
+              }));
 
               lastSavedSnapshotRef.current = JSON.stringify({
                 sections: resolvedSections || sections,
@@ -1053,41 +743,19 @@ const DocumentWorkspace = () => {
           );
         } else if (typeof parsedContent === "string" || typeof aiData?.text === "string") {
           const newText = (parsedContent || aiData?.text || "").trim();
-          updatedSections = updatedSections.map((sec) => {
-            if (sec.id === targetSec.id) {
-              if (sec.paragraphs) {
-                const splitParas = newText
-                  .split(/\n\n+/)
-                  .map((p) => p.trim())
-                  .filter(Boolean);
-                return {
-                  ...sec,
-                  paragraphs: splitParas.length > 0 ? splitParas : [newText],
-                };
-              }
-              if (sec.steps) {
-                const splitSteps = newText
-                  .split(/\n+/)
-                  .map((s) => s.replace(/^\d+[\.\)]\s*/, "").trim())
-                  .filter(Boolean);
-                return {
-                  ...sec,
-                  steps: splitSteps.length > 0 ? splitSteps : [newText],
-                };
-              }
-              if (sec.bullets) {
-                const splitBullets = newText
-                  .split(/\n+/)
-                  .map((b) => b.replace(/^[-*•]\s*/, "").trim())
-                  .filter(Boolean);
-                return {
-                  ...sec,
-                  bullets: splitBullets.length > 0 ? splitBullets : [newText],
-                };
-              }
-            }
-            return sec;
-          });
+          if (newText) {
+            updatedSections = updatedSections.map((sec) =>
+              sec.id === targetSec.id
+                ? {
+                    id: sec.id,
+                    sectionKey: sec.sectionKey || sectionKey,
+                    title: sec.title,
+                    ...(sec.isHighlighted ? { isHighlighted: true } : {}),
+                    ...parseTextToSectionBody(newText),
+                  }
+                : sec
+            );
+          }
         }
 
         const successMessage =
@@ -1308,26 +976,22 @@ const DocumentWorkspace = () => {
             </Link>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             <span className="text-slate-800 font-semibold">
-              {isBusinessPlan
-                ? docTitle || "Growth & Funding Business Plan"
-                : isSop
-                  ? navState.parentDocTitle || "Solar Installation Proposal"
-                  : docTitle}
+              {docTitle || (loading ? "\u00A0" : "Untitled document")}
             </span>
           </div>
 
           {/* Title & Metadata Badges */}
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              {docTitle}
+              {docTitle || "\u00A0"}
             </h1>
             <div className="flex items-center gap-2 mt-1">
               {isBusinessPlan ? (
-                <span className="px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-700">
+                <span className="px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-700">
                   Business Plan
                 </span>
               ) : isSop ? (
-                <span className="px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-700">
+                <span className="px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-700">
                   SOP
                 </span>
               ) : null}
@@ -1389,7 +1053,7 @@ const DocumentWorkspace = () => {
         </div>
 
         {/* Right Action Controls */}
-        <div className="flex items-center gap-2.5 shrink-0 relative">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0 relative">
           {/* Style Selector Dropdown Trigger */}
           <div className="relative" ref={styleMenuRef}>
             <button
@@ -1653,7 +1317,26 @@ const DocumentWorkspace = () => {
             }}
           >
             {/* Document Header Row */}
-            {isBusinessPlan ? (
+            {loading ? (
+              <div className="space-y-6 animate-pulse" aria-hidden="true">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-200 shrink-0" />
+                  <div className="space-y-1.5">
+                    <div className="h-3 w-32 rounded bg-slate-200" />
+                    <div className="h-2.5 w-24 rounded bg-slate-100" />
+                  </div>
+                </div>
+                <div className="h-8 w-3/4 rounded-lg bg-slate-200" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-6 border-b border-slate-100">
+                  {[0, 1].map((i) => (
+                    <div key={`hdr-sk-${i}`} className="space-y-1.5">
+                      <div className="h-2.5 w-20 rounded bg-slate-100" />
+                      <div className="h-3.5 w-40 rounded bg-slate-200" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : isBusinessPlan ? (
               styleTemplate === "Corporate" ? (
                 /* Corporate Business Plan Header (Matching Reference Design) */
                 <div className="space-y-6">
@@ -1678,7 +1361,7 @@ const DocumentWorkspace = () => {
                         : `BUSINESS PLAN — ${docTitle.toUpperCase()}`}
                     </h1>
                     <p className="text-xs text-slate-500 font-normal">
-                      {brandKit.tagline || "Clean power, built to last"}
+                      {brandKit.tagline}
                     </p>
                   </div>
 
@@ -1689,7 +1372,7 @@ const DocumentWorkspace = () => {
                         Prepared for
                       </p>
                       <p className="text-sm font-bold text-slate-900">
-                        {companyProfile.preparedFor || "Board and prospective lenders"}
+                        {companyProfile.preparedFor || "—"}
                       </p>
                     </div>
                     <div>
@@ -1697,7 +1380,7 @@ const DocumentWorkspace = () => {
                         Prepared by
                       </p>
                       <p className="text-sm font-bold text-slate-900">
-                        {companyProfile.preparedBy || "SolarTech Nigeria"}
+                        {companyProfile.preparedBy || "—"}
                       </p>
                     </div>
                   </div>
@@ -1730,7 +1413,7 @@ const DocumentWorkspace = () => {
                   </div>
                   <div>
                     <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
-                      {docTitle}
+                      {docTitle || "\u00A0"}
                     </h1>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-slate-100">
@@ -1739,7 +1422,7 @@ const DocumentWorkspace = () => {
                         Prepared for
                       </p>
                       <p className="text-sm font-bold text-slate-900">
-                        {companyProfile.preparedFor}
+                        {companyProfile.preparedFor || "—"}
                       </p>
                     </div>
                     <div>
@@ -1747,7 +1430,7 @@ const DocumentWorkspace = () => {
                         Prepared by
                       </p>
                       <p className="text-sm font-bold text-slate-900">
-                        {companyProfile.preparedBy}
+                        {companyProfile.preparedBy || "—"}
                       </p>
                     </div>
                   </div>
@@ -1768,7 +1451,7 @@ const DocumentWorkspace = () => {
                       Business Plan
                     </p>
                     <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase mb-1.5">
-                      {docTitle}
+                      {docTitle || "\u00A0"}
                     </h1>
                     <p className="text-xs text-slate-400 font-normal">
                       {brandKit.tagline}
@@ -1780,7 +1463,7 @@ const DocumentWorkspace = () => {
                         Prepared for
                       </p>
                       <p className="text-xs sm:text-[13px] font-bold text-slate-900">
-                        {companyProfile.preparedFor}
+                        {companyProfile.preparedFor || "—"}
                       </p>
                     </div>
                     <div>
@@ -1788,7 +1471,7 @@ const DocumentWorkspace = () => {
                         Prepared by
                       </p>
                       <p className="text-xs sm:text-[13px] font-bold text-slate-900">
-                        {companyProfile.preparedBy}
+                        {companyProfile.preparedBy || "—"}
                       </p>
                     </div>
                   </div>
@@ -1824,7 +1507,7 @@ const DocumentWorkspace = () => {
                       Standard Operating Procedure
                     </p>
                     <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
-                      {docTitle}
+                      {docTitle || "\u00A0"}
                     </h1>
                   </div>
 
@@ -1835,7 +1518,7 @@ const DocumentWorkspace = () => {
                         Process owner
                       </p>
                       <p className="text-sm font-bold text-white">
-                        {companyProfile.processOwner || "Warehouse Supervisor, Ikeja store"}
+                        {companyProfile.processOwner || "—"}
                       </p>
                     </div>
                     <div>
@@ -1843,7 +1526,7 @@ const DocumentWorkspace = () => {
                         Issued by
                       </p>
                       <p className="text-sm font-bold text-white">
-                        {companyProfile.issuedBy || `${companyProfile.companyName} Operations`}
+                        {companyProfile.issuedBy || companyProfile.companyName || "—"}
                       </p>
                     </div>
                   </div>
@@ -1867,7 +1550,7 @@ const DocumentWorkspace = () => {
                       Standard Operating Procedure
                     </p>
                     <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase mb-1.5">
-                      {docTitle}
+                      {docTitle || "\u00A0"}
                     </h1>
                     <p className="text-xs text-slate-400 font-normal">
                       {brandKit.tagline}
@@ -1881,7 +1564,7 @@ const DocumentWorkspace = () => {
                         Process owner
                       </p>
                       <p className="text-xs sm:text-[13px] font-bold text-slate-900">
-                        {companyProfile.processOwner || "Warehouse Supervisor, Ikeja store"}
+                        {companyProfile.processOwner || "—"}
                       </p>
                     </div>
                     <div>
@@ -1889,7 +1572,7 @@ const DocumentWorkspace = () => {
                         Issued by
                       </p>
                       <p className="text-xs sm:text-[13px] font-bold text-slate-900">
-                        {companyProfile.issuedBy || `${companyProfile.companyName} Operations`}
+                        {companyProfile.issuedBy || companyProfile.companyName || "—"}
                       </p>
                     </div>
                   </div>
@@ -1924,7 +1607,7 @@ const DocumentWorkspace = () => {
                   {/* SOP Title */}
                   <div className="mt-8 mb-6">
                     <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
-                      {docTitle}
+                      {docTitle || "\u00A0"}
                     </h1>
                   </div>
 
@@ -1935,7 +1618,7 @@ const DocumentWorkspace = () => {
                         Process owner
                       </p>
                       <p className="text-sm font-bold text-slate-900">
-                        {companyProfile.processOwner || "Warehouse Supervisor, Ikeja store"}
+                        {companyProfile.processOwner || "—"}
                       </p>
                     </div>
                     <div>
@@ -1943,7 +1626,7 @@ const DocumentWorkspace = () => {
                         Issued by
                       </p>
                       <p className="text-sm font-bold text-slate-900">
-                        {companyProfile.issuedBy || `${companyProfile.companyName} Operations`}
+                        {companyProfile.issuedBy || companyProfile.companyName || "—"}
                       </p>
                     </div>
                   </div>
@@ -1978,7 +1661,7 @@ const DocumentWorkspace = () => {
                 {/* Document Title */}
                 <div className="mt-8 mb-6">
                   <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
-                    {docTitle}
+                    {docTitle || "\u00A0"}
                   </h1>
                 </div>
 
@@ -1989,7 +1672,7 @@ const DocumentWorkspace = () => {
                       Prepared for
                     </p>
                     <p className="text-sm font-bold text-slate-900">
-                      {companyProfile.preparedFor}
+                      {companyProfile.preparedFor || "—"}
                     </p>
                   </div>
                   <div>
@@ -1997,7 +1680,7 @@ const DocumentWorkspace = () => {
                       Prepared by
                     </p>
                     <p className="text-sm font-bold text-slate-900">
-                      {companyProfile.preparedBy}
+                      {companyProfile.preparedBy || "—"}
                     </p>
                   </div>
                 </div>
@@ -2008,11 +1691,43 @@ const DocumentWorkspace = () => {
             {/* SECTIONS                                                         */}
             {/* ================================================================ */}
             <div
-              className={`mt-8 ${
+              key={loading ? "doc-loading" : "doc-ready"}
+              aria-busy={loading}
+              className={`mt-8 doc-fade-in ${
                 styleTemplate === "Minimal" ? "space-y-8" : "space-y-10"
               }`}
             >
-              {sections.map((section) => {
+              {/* Skeleton mirrors section spacing so the swap causes no layout shift */}
+              {loading &&
+                [0, 1, 2].map((i) => (
+                  <div
+                    key={`sec-sk-${i}`}
+                    className="p-2 -mx-2 animate-pulse"
+                    aria-hidden="true"
+                  >
+                    <div className="h-4 w-40 rounded-md bg-slate-200 mb-4" />
+                    <div className="space-y-2.5">
+                      <div className="h-3 w-full rounded bg-slate-100" />
+                      <div className="h-3 w-11/12 rounded bg-slate-100" />
+                      <div className="h-3 w-4/6 rounded bg-slate-100" />
+                    </div>
+                  </div>
+                ))}
+
+              {!loading && sections.length === 0 && (
+                <div className="flex flex-col items-center justify-center text-center py-16 px-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40">
+                  <FileText className="w-8 h-8 text-slate-300 mb-3" />
+                  <p className="text-sm font-bold text-slate-700">
+                    No generated content yet
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm leading-relaxed">
+                    This document has no generated sections on the server yet.
+                    Generate it from the document setup page to populate it.
+                  </p>
+                </div>
+              )}
+
+              {!loading && sections.map((section) => {
                 const isEditing = editingSectionId === section.id;
                 const isSelectedForAi = selectedSectionId === section.id;
 
@@ -2525,7 +2240,7 @@ const DocumentWorkspace = () => {
         {/* RIGHT COLUMN: AI ASSISTANT PANEL (Matching Reference Image)        */}
         {/* ================================================================== */}
         {showAiAssistant && (
-          <div className="w-full lg:w-[330px] xl:w-[350px] shrink-0 sticky top-6 animate-in fade-in slide-in-from-right-4 duration-200">
+          <div className="w-full lg:w-[330px] xl:w-[350px] shrink-0 sticky top-24 animate-in fade-in slide-in-from-right-4 duration-200">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-5">
               {/* Panel Header */}
               <div className="flex items-start justify-between">

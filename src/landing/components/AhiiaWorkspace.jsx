@@ -61,7 +61,7 @@ function HowItWorks() {
         <br className="hidden sm:block" /> finished document
       </h2>
 
-      <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-8 text-left">
+      <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-8 text-left">
         {STEPS.map((step) => (
           <div key={step.id}>
             <div className="h-0.5 w-10 bg-[#007498] mb-4" />
