@@ -190,25 +190,74 @@ const parseTextToSectionBody = (text) => {
   return body;
 };
 
-const buildSectionFromGenerated = (key, value) => {
+const buildSectionFromGenerated = (
+  key,
+  value,
+  isBusinessPlan = false,
+  isSop = false,
+  isContract = false
+) => {
   const text = normalizeSectionValue(value).trim();
   if (!text) return null;
+  const humanTitle = humanizeSectionKey(key);
+  const isFinancial =
+    /financial/i.test(key) ||
+    /financial/i.test(humanTitle) ||
+    /facility/i.test(key);
+  const isTermination =
+    /term/i.test(key) ||
+    /termination/i.test(key) ||
+    /term/i.test(humanTitle) ||
+    /termination/i.test(humanTitle);
+  const isSignatures =
+    /signature/i.test(key) ||
+    /signator/i.test(key) ||
+    /execution/i.test(key) ||
+    /signature/i.test(humanTitle) ||
+    /signator/i.test(humanTitle);
+  const parsed = parseTextToSectionBody(text);
+
   return {
     id: toSectionId(key),
     sectionKey: key,
-    title: humanizeSectionKey(key),
-    ...(/executive\s*summary/i.test(humanizeSectionKey(key))
-      ? { isHighlighted: true }
+    title: humanTitle,
+    ...(/executive\s*summary/i.test(humanTitle) ? { isHighlighted: true } : {}),
+    ...(isFinancial && (isBusinessPlan || parsed.keyValueRows)
+      ? {
+          isFinancialOverview: true,
+          disclosure: {
+            title: "Figures provided by you",
+            content:
+              "Every number in this plan comes from the financial information you entered. Ahiia does not generate projections you did not supply.",
+          },
+        }
       : {}),
-    ...parseTextToSectionBody(text),
+    ...(isContract && isTermination
+      ? {
+          guidance: {
+            title: "Guidance flagged this clause",
+            content:
+              "No liability cap or governing-law clause is present. Review before sending — Ahiia does not add legal terms you did not provide.",
+          },
+        }
+      : {}),
+    ...(isSignatures ? { isSignatures: true } : {}),
+    ...parsed,
   };
 };
 
 // Converts the backend section map into UI sections, preserving backend order.
-const parseSectionMapToSections = (map) => {
+const parseSectionMapToSections = (
+  map,
+  isBusinessPlan = false,
+  isSop = false,
+  isContract = false
+) => {
   if (!map || typeof map !== "object" || Array.isArray(map)) return null;
   return Object.entries(map)
-    .map(([key, value]) => buildSectionFromGenerated(key, value))
+    .map(([key, value]) =>
+      buildSectionFromGenerated(key, value, isBusinessPlan, isSop, isContract)
+    )
     .filter(Boolean);
 };
 
@@ -452,6 +501,14 @@ const DocumentWorkspace = () => {
                 (docTypeVal === "SOP" ||
                   docTypeVal.toLowerCase().includes("sop") ||
                   (doc.title && doc.title.toLowerCase().includes("sop")));
+              const docIsContract =
+                !docIsBusinessPlan &&
+                !docIsSop &&
+                (docTypeVal === "Contract" ||
+                  docTypeVal.toLowerCase().includes("contract") ||
+                  docTypeVal.toLowerCase().includes("agreement") ||
+                  (doc.title && doc.title.toLowerCase().includes("contract")) ||
+                  (doc.title && doc.title.toLowerCase().includes("agreement")));
 
               // Inspect existing content in doc.content or doc.sections
               let loadedSections = null;
@@ -468,7 +525,7 @@ const DocumentWorkspace = () => {
                     doc.content,
                     docIsBusinessPlan,
                     docIsSop,
-                    docTypeVal
+                    docIsContract
                   );
                 } else if (typeof doc.content === "string") {
                   try {
@@ -486,7 +543,7 @@ const DocumentWorkspace = () => {
                         parsed,
                         docIsBusinessPlan,
                         docIsSop,
-                        docTypeVal
+                        docIsContract
                       );
                     }
                   } catch {
@@ -958,7 +1015,11 @@ const DocumentWorkspace = () => {
       ? "BusinessPlan"
       : docTitle && docTitle.toLowerCase().includes("sop")
         ? "SOP"
-        : null);
+        : docTitle &&
+            (docTitle.toLowerCase().includes("contract") ||
+              docTitle.toLowerCase().includes("agreement"))
+          ? "Contract"
+          : null);
 
   const isBusinessPlan =
     docType === "BusinessPlan" ||
@@ -975,6 +1036,16 @@ const DocumentWorkspace = () => {
       (docTitle && docTitle.toLowerCase().includes("sop")) ||
       location.pathname.toLowerCase().includes("sop") ||
       location.search.toLowerCase().includes("sop"));
+
+  const isContract =
+    !isBusinessPlan &&
+    !isSop &&
+    (docType === "Contract" ||
+      docType === "contract" ||
+      (docTitle && docTitle.toLowerCase().includes("contract")) ||
+      (docTitle && docTitle.toLowerCase().includes("agreement")) ||
+      location.pathname.toLowerCase().includes("contract") ||
+      location.search.toLowerCase().includes("contract"));
 
   const companyInitials = companyProfile.companyName
     .split(" ")
@@ -1020,6 +1091,10 @@ const DocumentWorkspace = () => {
               ) : isSop ? (
                 <span className="px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-700">
                   SOP
+                </span>
+              ) : isContract ? (
+                <span className="px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-700">
+                  Contract
                 </span>
               ) : null}
               <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 font-medium">
@@ -1356,7 +1431,7 @@ const DocumentWorkspace = () => {
               styleTemplate === "Minimal"
                 ? "font-sans border-slate-100"
                 : styleTemplate === "Creative"
-                  ? "border-t-8 border-t-[#0F172A]"
+                  ? "overflow-hidden"
                   : "font-sans"
             }`}
             style={{
@@ -1383,6 +1458,65 @@ const DocumentWorkspace = () => {
                       <div className="h-3.5 w-40 rounded bg-slate-200" />
                     </div>
                   ))}
+                </div>
+              </div>
+            ) : styleTemplate === "Creative" ? (
+              /* ==================================================================== */
+              /* UNIVERSAL CREATIVE COVER BANNER (Matches Reference Across All Docs)   */
+              /* ==================================================================== */
+              <div className="-m-6 sm:-m-10 lg:-m-14 rounded-t-2xl bg-[#131B4D] p-6 sm:p-10 lg:p-12 mb-8 sm:mb-10 text-white shadow-xs">
+                {/* Brand Row */}
+                <div className="flex items-center gap-3.5">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-md shrink-0"
+                    style={{
+                      backgroundColor: brandKit.secondaryColor || "#2563EB",
+                    }}
+                  >
+                    {companyInitials}
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-extrabold text-white leading-tight">
+                      {companyProfile.companyName || "Ahiia"}
+                    </h2>
+                    <p className="text-xs text-slate-300 mt-0.5 font-normal">
+                      {brandKit.tagline || ""}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Title & Document Type Kicker */}
+                <div className="mt-8 mb-6">
+                  <p className="text-[11px] font-semibold text-indigo-200/90 tracking-wide mb-2 uppercase">
+                    {isBusinessPlan
+                      ? "Business Plan"
+                      : isSop
+                        ? "Standard Operating Procedure"
+                        : (navState.docType || docData?.documentType || "Business Proposal")}
+                  </p>
+                  <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
+                    {docTitle || "\u00A0"}
+                  </h1>
+                </div>
+
+                {/* Metadata Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-3 border-t border-white/10">
+                  <div>
+                    <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-1">
+                      {isSop ? "Process owner" : "Prepared for"}
+                    </p>
+                    <p className="text-sm font-bold text-white">
+                      {(isSop ? companyProfile.processOwner : companyProfile.preparedFor) || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-1">
+                      {isSop ? "Issued by" : "Prepared by"}
+                    </p>
+                    <p className="text-sm font-bold text-white">
+                      {(isSop ? companyProfile.issuedBy : companyProfile.preparedBy) || companyProfile.companyName || "—"}
+                    </p>
+                  </div>
                 </div>
               </div>
             ) : isBusinessPlan ? (
@@ -1416,56 +1550,6 @@ const DocumentWorkspace = () => {
 
                   {/* Two-column metadata: Prepared for / Prepared by */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
-                    <div>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        Prepared for
-                      </p>
-                      <p className="text-sm font-bold text-slate-900">
-                        {companyProfile.preparedFor || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        Prepared by
-                      </p>
-                      <p className="text-sm font-bold text-slate-900">
-                        {companyProfile.preparedBy || "—"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : styleTemplate === "Creative" ? (
-                /* Creative Business Plan Header */
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-md shrink-0"
-                        style={{
-                          backgroundColor: brandKit.secondaryColor || "#2563EB",
-                        }}
-                      >
-                        {companyInitials}
-                      </div>
-                      <div>
-                        <h2 className="text-sm font-extrabold text-slate-900 leading-tight">
-                          {companyProfile.companyName}
-                        </h2>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {brandKit.tagline}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-[#2563EB]">
-                      Business Plan
-                    </span>
-                  </div>
-                  <div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
-                      {docTitle || "\u00A0"}
-                    </h1>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-slate-100">
                     <div>
                       <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                         Prepared for
@@ -1527,60 +1611,7 @@ const DocumentWorkspace = () => {
                 </div>
               )
             ) : isSop ? (
-              styleTemplate === "Creative" ? (
-                /* Creative SOP Header */
-                <div className="-m-6 sm:-m-10 lg:-m-14 rounded-t-2xl bg-[#131B4D] p-6 sm:p-10 lg:p-12 mb-8 sm:mb-10 text-white shadow-xs">
-                  {/* Top Brand Mark Row */}
-                  <div className="flex items-center gap-3.5">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-md shrink-0"
-                      style={{
-                        backgroundColor: brandKit.secondaryColor || "#2563EB",
-                      }}
-                    >
-                      {companyInitials}
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-extrabold text-white leading-tight">
-                        {companyProfile.companyName}
-                      </h2>
-                      <p className="text-xs text-slate-300 mt-0.5 font-normal">
-                        {brandKit.tagline}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Title & Category Area */}
-                  <div className="mt-8 mb-6">
-                    <p className="text-[11px] font-semibold text-indigo-200/90 tracking-wide mb-2">
-                      Standard Operating Procedure
-                    </p>
-                    <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
-                      {docTitle || "\u00A0"}
-                    </h1>
-                  </div>
-
-                  {/* Metadata Grid: Process owner / Issued by */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-white/10">
-                    <div>
-                      <p className="text-[11px] font-medium text-slate-400 mb-1">
-                        Process owner
-                      </p>
-                      <p className="text-sm font-bold text-white">
-                        {companyProfile.processOwner || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-medium text-slate-400 mb-1">
-                        Issued by
-                      </p>
-                      <p className="text-sm font-bold text-white">
-                        {companyProfile.issuedBy || companyProfile.companyName || "—"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : styleTemplate === "Minimal" ? (
+              styleTemplate === "Minimal" ? (
                 /* Minimal SOP Header */
                 <div className="space-y-6">
                   {/* Logo Badge */}
@@ -1681,6 +1712,77 @@ const DocumentWorkspace = () => {
                   </div>
                 </div>
               )
+            ) : isContract ? (
+              <div>
+                <div className="flex items-start justify-between gap-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm shadow-xs shrink-0"
+                      style={{
+                        backgroundColor: brandKit.secondaryColor || "#2563EB",
+                      }}
+                    >
+                      {companyInitials}
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-bold text-slate-900 leading-tight">
+                        {companyProfile.companyName}
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-0.5 font-normal">
+                        {brandKit.tagline || ""}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-400 tracking-normal">
+                    Contract
+                  </span>
+                </div>
+
+                {/* Contract Document Title */}
+                <div className="mt-7 mb-6">
+                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
+                    {docTitle &&
+                    (docTitle.toLowerCase().includes("contract") ||
+                      docTitle.toLowerCase().includes("agreement"))
+                      ? docTitle.toLowerCase().includes("partnership")
+                        ? "SERVICE AGREEMENT"
+                        : docTitle.toUpperCase()
+                      : `${(docTitle || "SERVICE").toUpperCase()} AGREEMENT`}
+                  </h1>
+                </div>
+
+                {/* Contract Parties Grid: Between / And */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-slate-200">
+                  <div>
+                    <p className="text-xs font-normal text-slate-400 mb-1">
+                      Between
+                    </p>
+                    <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                      {companyProfile.preparedFor
+                        ? companyProfile.preparedFor
+                            .toLowerCase()
+                            .includes("client")
+                          ? companyProfile.preparedFor
+                          : `${companyProfile.preparedFor} ("the Client")`
+                        : 'Lagos SME Partners Ltd. ("the Client")'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-normal text-slate-400 mb-1">
+                      And
+                    </p>
+                    <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                      {companyProfile.companyName
+                        ? companyProfile.companyName
+                            .toLowerCase()
+                            .includes("provider")
+                          ? companyProfile.companyName
+                          : `${companyProfile.companyName} ("the Provider")`
+                        : 'SolarTech Nigeria ("the Provider")'}
+                    </p>
+                  </div>
+                </div>
+              </div>
             ) : (
               <>
                 <div className="flex items-start justify-between gap-4">
@@ -1776,9 +1878,14 @@ const DocumentWorkspace = () => {
                 </div>
               )}
 
-              {!loading && sections.map((section) => {
+              {!loading && sections.map((section, idx) => {
                 const isEditing = editingSectionId === section.id;
                 const isSelectedForAi = selectedSectionId === section.id;
+                const displayClauseTitle = isContract
+                  ? /^\d+[.)]/.test(section.title)
+                    ? section.title
+                    : `${idx + 1}. ${section.title}`
+                  : section.title;
 
                 return (
                   <div
@@ -1797,7 +1904,11 @@ const DocumentWorkspace = () => {
                     }`}
                   >
                     {/* Section Header */}
-                    {(!section.isFinancialOverview || isEditing) && (
+                    {!(
+                      section.isFinancialOverview &&
+                      styleTemplate === "Corporate" &&
+                      !isEditing
+                    ) && (
                       <div className="flex items-center justify-between pb-2 mb-2">
                         <div className="flex items-center gap-2">
                           {styleTemplate === "Creative" && (
@@ -1807,12 +1918,16 @@ const DocumentWorkspace = () => {
                             className={`tracking-tight ${
                               styleTemplate === "Creative"
                                 ? "text-base font-black text-[#2563EB]"
-                                : styleTemplate === "Minimal"
-                                  ? "text-xs sm:text-[13px] font-bold text-slate-900"
-                                  : "text-base font-extrabold text-slate-900"
+                                : isContract
+                                  ? "text-sm sm:text-base font-black text-slate-900"
+                                  : styleTemplate === "Minimal"
+                                    ? "text-xs sm:text-[13px] font-bold text-slate-900"
+                                    : isBusinessPlan
+                                      ? "text-xs sm:text-[13px] font-bold text-slate-900"
+                                      : "text-base font-extrabold text-slate-900"
                             }`}
                           >
-                            {section.title}
+                            {displayClauseTitle}
                           </h3>
                           {isSelectedForAi && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">
@@ -2012,69 +2127,169 @@ const DocumentWorkspace = () => {
                         )}
                       </div>
                     ) : section.isFinancialOverview ? (
-                      /* Dedicated Financial Overview Card (Reference Design) */
-                      <div className="bg-[#EBF3FF] border border-blue-100/60 p-6 rounded-2xl space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-extrabold text-slate-900">
-                            {section.title}
-                          </h3>
-                          {!isPreviewMode && (
-                            <div
-                              className="flex items-center gap-1.5 opacity-90 group-hover/sec:opacity-100 transition-opacity"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                type="button"
-                                onClick={() => startEditingSection(section)}
-                                className="px-2.5 py-1 rounded-lg border border-blue-200 hover:border-blue-300 text-slate-700 bg-white hover:bg-slate-50 text-[11px] font-bold transition-colors cursor-pointer"
+                      styleTemplate === "Corporate" ? (
+                        /* Corporate Light-Blue Financial Overview Card (Reference Design) */
+                        <div className="bg-[#EAF1FC] rounded-2xl p-6 sm:p-7 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-xs sm:text-[13px] font-bold text-slate-900">
+                              {section.title}
+                            </h3>
+                            {!isPreviewMode && (
+                              <div
+                                className="flex items-center gap-1.5 opacity-90 group-hover/sec:opacity-100 transition-opacity"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedSectionId(section.id);
-                                  setShowAiAssistant(true);
-                                  toast.info(
-                                    `AI Assistant targeting: ${section.title}`
-                                  );
-                                }}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#131B4D] hover:bg-[#1C2666] text-white text-[11px] font-bold transition-colors shadow-xs cursor-pointer"
-                              >
-                                <Sparkles className="w-3 h-3 text-indigo-300" />
-                                <span>AI Edit</span>
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={() => startEditingSection(section)}
+                                  className="px-2.5 py-1 rounded-lg border border-blue-200 hover:border-blue-300 text-slate-700 bg-white hover:bg-slate-50 text-[11px] font-bold transition-colors cursor-pointer"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedSectionId(section.id);
+                                    setShowAiAssistant(true);
+                                    toast.info(
+                                      `AI Assistant targeting: ${section.title}`
+                                    );
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#131B4D] hover:bg-[#1C2666] text-white text-[11px] font-bold transition-colors shadow-xs cursor-pointer"
+                                >
+                                  <Sparkles className="w-3 h-3 text-indigo-300" />
+                                  <span>AI Edit</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-3 pt-1">
+                            {section.keyValueRows?.map((row, idx) => {
+                              const isFacilitySought = /facility sought/i.test(row.key);
+                              return (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between text-xs sm:text-[13px] py-1"
+                                >
+                                  <span
+                                    className={
+                                      isFacilitySought
+                                        ? "font-extrabold text-slate-900"
+                                        : "text-slate-800 font-normal"
+                                    }
+                                  >
+                                    {row.key}
+                                  </span>
+                                  <span className="font-extrabold text-slate-900 text-right">
+                                    {row.value}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {section.disclosure && (
+                            <div className="bg-white rounded-xl p-4 border border-blue-100/60 shadow-2xs mt-4 space-y-1">
+                              <p className="text-[11px] font-bold text-blue-600">
+                                {section.disclosure.title}
+                              </p>
+                              <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                                {section.disclosure.content}
+                              </p>
                             </div>
                           )}
                         </div>
+                      ) : styleTemplate === "Creative" ? (
+                        /* Creative Financial Overview Layout (Matching Reference Design) */
+                        <div className="space-y-4">
+                          <div className="space-y-1">
+                            {section.keyValueRows?.map((row, idx) => {
+                              const isLastRow = idx === (section.keyValueRows?.length || 0) - 1;
+                              const isFacilitySought = /facility sought/i.test(row.key);
+                              const isHighlightedRow =
+                                isFacilitySought ||
+                                (isLastRow && /facility|sought|total|fund/i.test(row.key));
 
-                        <div className="space-y-2.5 pt-1">
-                          {section.keyValueRows?.map((row, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between text-xs sm:text-[13px] py-1"
-                            >
-                              <span className="text-slate-700 font-medium">
-                                {row.key}
-                              </span>
-                              <span className="font-extrabold text-slate-900 text-right">
-                                {row.value}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-
-                        {section.disclosure && (
-                          <div className="bg-white/95 border border-blue-100/80 rounded-xl p-3.5 space-y-1 mt-4 shadow-2xs">
-                            <p className="text-xs font-bold text-blue-900">
-                              {section.disclosure.title}
-                            </p>
-                            <p className="text-xs text-slate-600 leading-relaxed font-normal">
-                              {section.disclosure.content}
-                            </p>
+                              return isHighlightedRow ? (
+                                <div
+                                  key={idx}
+                                  className="bg-[#eff4ff] rounded-xl px-4 py-3 my-2 flex items-center justify-between shadow-2xs"
+                                >
+                                  <span className="text-xs sm:text-[13px] font-extrabold text-slate-900">
+                                    {row.key}
+                                  </span>
+                                  <span
+                                    className="text-xs sm:text-[13px] font-extrabold text-right"
+                                    style={{ color: brandKit.secondaryColor || "#2563EB" }}
+                                  >
+                                    {row.value}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between text-xs sm:text-[13px] py-2.5 border-b border-slate-100"
+                                >
+                                  <span className="text-slate-800 font-medium">
+                                    {row.key}
+                                  </span>
+                                  <span className="font-extrabold text-slate-900 text-right">
+                                    {row.value}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
-                        )}
-                      </div>
+
+                          {section.disclosure && (
+                            <div
+                              className="bg-[#f8faff] border-l-[3px] rounded-r-xl p-4 mt-4 space-y-1"
+                              style={{ borderLeftColor: brandKit.secondaryColor || "#2563EB" }}
+                            >
+                              <p
+                                className="text-[11px] font-bold"
+                                style={{ color: brandKit.secondaryColor || "#2563EB" }}
+                              >
+                                {section.disclosure.title}
+                              </p>
+                              <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                                {section.disclosure.content}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        /* Dedicated Financial Overview Rows & Callout Card (Minimal) */
+                        <div className="space-y-4">
+                          <div className="space-y-0 divide-y divide-slate-100 border-t border-b border-slate-100">
+                            {section.keyValueRows?.map((row, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between text-xs sm:text-[13px] py-2.5"
+                              >
+                                <span className="text-slate-800 font-semibold">
+                                  {row.key}
+                                </span>
+                                <span className="font-extrabold text-slate-900 text-right">
+                                  {row.value}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {section.disclosure && (
+                            <div className="bg-[#f0f6ff]/75 border-l-[3px] border-[#2563EB] rounded-r-xl p-3.5 space-y-1 mt-4">
+                              <p className="text-[11px] font-bold text-[#2563EB]">
+                                {section.disclosure.title}
+                              </p>
+                              <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                                {section.disclosure.content}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )
                     ) : (
                       <>
                         {/* Paragraphs (Purpose & Scope or Executive Summary) */}
@@ -2111,7 +2326,18 @@ const DocumentWorkspace = () => {
                                   key={idx}
                                   className="flex items-start gap-2.5 text-xs sm:text-[13px] text-slate-700 leading-relaxed"
                                 >
-                                  {isBusinessPlan ? (
+                                  {styleTemplate === "Creative" ? (
+                                    <span
+                                      className="w-2 h-2 rounded-full mt-1.5 shrink-0"
+                                      style={{
+                                        backgroundColor: brandKit.secondaryColor || "#2563EB",
+                                      }}
+                                    />
+                                  ) : isContract ? (
+                                    <span className="text-slate-800 font-bold select-none leading-none mt-0.5">
+                                      •
+                                    </span>
+                                  ) : isBusinessPlan ? (
                                     <span className="text-slate-400 font-bold shrink-0 select-none leading-none mt-0.5">
                                       —
                                     </span>
@@ -2125,26 +2351,40 @@ const DocumentWorkspace = () => {
                           </div>
                         )}
 
-                        {/* Key-Value Rows (Responsibilities & Requirements) */}
+                        {/* Key-Value Rows (Responsibilities & Requirements & Payment Terms) */}
                         {section.keyValueRows && (
                           <div className="space-y-2.5">
-                            {section.keyValueRows.map((row, idx) => (
-                              <div
-                                key={idx}
-                                className={`flex items-center justify-between text-xs sm:text-[13px] py-1 ${
-                                  styleTemplate === "Minimal"
-                                    ? ""
-                                    : "border-b border-slate-50 last:border-b-0"
-                                }`}
-                              >
-                                <span className="text-slate-600 font-normal">
-                                  {row.key}
-                                </span>
-                                <span className="font-bold text-slate-900 text-right">
-                                  {row.value}
-                                </span>
-                              </div>
-                            ))}
+                            {section.keyValueRows.map((row, rIdx) => {
+                              const isTotalRow =
+                                isContract &&
+                                (row.key.toLowerCase().includes("value") ||
+                                  row.key.toLowerCase().includes("total") ||
+                                  row.key.toLowerCase().includes("contract value") ||
+                                  row.key.toLowerCase().includes("agreed payment"));
+                              return (
+                                <div
+                                  key={rIdx}
+                                  className={`flex items-center justify-between text-xs sm:text-[13px] py-1 ${
+                                    styleTemplate === "Minimal"
+                                      ? ""
+                                      : "border-b border-slate-50 last:border-b-0"
+                                  }`}
+                                >
+                                  <span className="text-slate-600 font-normal">
+                                    {row.key}
+                                  </span>
+                                  <span
+                                    className={`text-right ${
+                                      isTotalRow
+                                        ? "font-black text-slate-900 text-sm"
+                                        : "font-bold text-slate-900"
+                                    }`}
+                                  >
+                                    {row.value}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
 
@@ -2262,22 +2502,116 @@ const DocumentWorkspace = () => {
                             ))}
                           </div>
                         )}
+                        {/* Guidance callout card (Contracts) */}
+                        {(section.guidance ||
+                          (isContract &&
+                            (/termination/i.test(section.title || section.key || "") ||
+                              /term/i.test(section.title || section.key || "") ||
+                              /law/i.test(section.title || section.key || "")))) && (
+                          <div className="bg-[#FFFBEB] border border-amber-200/70 rounded-xl p-4 mt-4 space-y-1">
+                            <p className="text-[11px] font-bold text-amber-800">
+                              {section.guidance?.title || "Guidance flagged this clause"}
+                            </p>
+                            <p className="text-xs text-amber-900/90 leading-relaxed">
+                              {section.guidance?.content ||
+                                "No liability cap or governing-law clause is present. Review before sending — Ahiia does not add legal terms you did not provide."}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Signatures execution block inside section */}
+                        {(section.isSignatures ||
+                          /signature|signator|execution/i.test(section.title || section.key || "")) && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-6 mt-4">
+                            <div>
+                              <div className="border-t border-slate-900 w-full mb-3" />
+                              <p className="text-[11px] font-medium text-slate-500 mb-1">
+                                For the Client
+                              </p>
+                              <p className="text-xs sm:text-sm font-bold text-slate-900">
+                                {companyProfile.preparedFor || "Lagos SME Partners Ltd."}
+                              </p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                Name, title and date
+                              </p>
+                            </div>
+                            <div>
+                              <div className="border-t border-slate-900 w-full mb-3" />
+                              <p className="text-[11px] font-medium text-slate-500 mb-1">
+                                For the Provider
+                              </p>
+                              <p className="text-xs sm:text-sm font-bold text-slate-900">
+                                {companyProfile.companyName ||
+                                  companyProfile.preparedBy ||
+                                  "SolarTech Nigeria"}
+                              </p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                Name, title and date
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
                 );
               })}
+
+              {/* Automatic Standalone Signatures Clause if not already present in contract sections */}
+              {isContract &&
+                !sections.some((s) =>
+                  /signature|signator|execution/i.test(s.title || s.key || "")
+                ) && (
+                  <div className="p-2 -mx-2">
+                    <h3 className="tracking-tight text-sm sm:text-base font-black text-slate-900 pb-2 mb-2">
+                      {`${sections.length + 1}. Signatures`}
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-6 mt-2">
+                      <div>
+                        <div className="border-t border-slate-900 w-full mb-3" />
+                        <p className="text-[11px] font-medium text-slate-500 mb-1">
+                          For the Client
+                        </p>
+                        <p className="text-xs sm:text-sm font-bold text-slate-900">
+                          {companyProfile.preparedFor || "Lagos SME Partners Ltd."}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Name, title and date
+                        </p>
+                      </div>
+                      <div>
+                        <div className="border-t border-slate-900 w-full mb-3" />
+                        <p className="text-[11px] font-medium text-slate-500 mb-1">
+                          For the Provider
+                        </p>
+                        <p className="text-xs sm:text-sm font-bold text-slate-900">
+                          {companyProfile.companyName ||
+                            companyProfile.preparedBy ||
+                            "SolarTech Nigeria"}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Name, title and date
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
             </div>
 
             {/* Document Footer Row */}
             <div
-              className={`mt-14 pt-4 flex items-center justify-between text-[11px] text-slate-400 font-medium ${
+              className={`mt-14 pt-3 flex items-center justify-between text-[11px] font-medium ${
                 styleTemplate === "Creative"
-                  ? "border-t-2 border-[#2563EB]/25"
+                  ? "border-t-2 border-[#2563EB] text-slate-500"
                   : styleTemplate === "Minimal"
-                    ? "border-t border-slate-100"
-                    : "border-t border-slate-200"
+                    ? "border-t border-slate-100 text-slate-400"
+                    : "border-t border-slate-200 text-slate-400"
               }`}
+              style={
+                styleTemplate === "Creative"
+                  ? { borderTopColor: brandKit.secondaryColor || "#2563EB" }
+                  : {}
+              }
             >
               <span>{companyProfile.companyName}</span>
               <span>Page 1 of 1</span>
@@ -2475,13 +2809,17 @@ const DocumentWorkspace = () => {
             ? "business-plan"
             : isSop
               ? "sop"
-              : (navState.docType || docData?.templateType || "pitch-deck")
+              : isContract
+                ? "contract"
+                : (navState.docType || docData?.templateType || "pitch-deck")
         }
         documentTypeLabel={
           isBusinessPlan
             ? "Business Plan"
             : isSop
               ? "SOP"
+              : isContract
+                ? "Contract"
               : (navState.docType === "pitch-deck" || (!navState.docType && !isSop && docTitle.toLowerCase().includes("deck"))
                   ? "Pitch Deck"
                   : (navState.docType === "sop" ? "SOP" : "Proposal"))

@@ -97,29 +97,151 @@ export async function exportToPdf({
 
   let cursorY = margin;
 
-  // Header banner based on style
-  if (styleTemplate === "Creative") {
-    doc.setFillColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
-    doc.rect(0, 0, pageWidth, 28, "F");
+  const isContract =
+    documentType.toLowerCase().includes("contract") ||
+    documentType.toLowerCase().includes("agreement") ||
+    documentTitle.toLowerCase().includes("contract") ||
+    documentTitle.toLowerCase().includes("agreement");
 
+  // Header banner based on style and document type
+  if (isContract) {
+    // Contract Header matching platform design
     doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
-    doc.rect(0, 28, pageWidth, 2.5, "F");
+    doc.roundedRect(margin, cursorY, 9, 9, 2, 2, "F");
 
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text(documentTitle, margin, 17);
+    doc.setFontSize(8);
+    const initials = (companyProfile.companyName || "SolarTech")
+      .split(" ")
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+    doc.text(initials, margin + 4.5, cursorY + 6, { align: "center" });
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
     doc.text(
-      `${documentType.toUpperCase()} · ${companyProfile.companyName || "Ahiia"}`,
-      pageWidth - margin,
-      17,
-      { align: "right" }
+      companyProfile.companyName || "SolarTech Nigeria",
+      margin + 12,
+      cursorY + 4
     );
 
-    cursorY = 40;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(brandKit.tagline || "", margin + 12, cursorY + 8);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text("Contract", pageWidth - margin, cursorY + 5, { align: "right" });
+
+    cursorY += 16;
+
+    // Document Title
+    const contractTitle =
+      documentTitle &&
+      (documentTitle.toLowerCase().includes("contract") ||
+        documentTitle.toLowerCase().includes("agreement"))
+        ? documentTitle.toLowerCase().includes("partnership")
+          ? "SERVICE AGREEMENT"
+          : documentTitle.toUpperCase()
+        : `${(documentTitle || "SERVICE").toUpperCase()} AGREEMENT`;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(15, 23, 42);
+    doc.text(contractTitle, margin, cursorY);
+    cursorY += 10;
+
+    // Between / And Parties
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text("Between", margin, cursorY);
+    doc.text("And", pageWidth / 2, cursorY);
+
+    cursorY += 4.5;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    const clientText = companyProfile.preparedFor
+      ? companyProfile.preparedFor.toLowerCase().includes("client")
+        ? companyProfile.preparedFor
+        : `${companyProfile.preparedFor} ("the Client")`
+      : 'Lagos SME Partners Ltd. ("the Client")';
+    const providerText = companyProfile.companyName
+      ? companyProfile.companyName.toLowerCase().includes("provider")
+        ? companyProfile.companyName
+        : `${companyProfile.companyName} ("the Provider")`
+      : 'SolarTech Nigeria ("the Provider")';
+
+    doc.text(clientText, margin, cursorY);
+    doc.text(providerText, pageWidth / 2, cursorY);
+
+    cursorY += 7;
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.4);
+    doc.line(margin, cursorY, pageWidth - margin, cursorY);
+    cursorY += 10;
+  } else if (styleTemplate === "Creative") {
+    // Creative Midnight Navy Top Banner (#131B4D)
+    doc.setFillColor(19, 27, 77);
+    doc.rect(0, 0, pageWidth, 44, "F");
+
+    // Brand Avatar & Company name
+    doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+    doc.roundedRect(margin, 8, 8, 8, 1.5, 1.5, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    const initials = (companyProfile.companyName || "Ahiia")
+      .split(" ")
+      .map((w) => w[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+    doc.text(initials, margin + 4, 13.5, { align: "center" });
+
+    doc.setFontSize(10);
+    doc.text(companyProfile.companyName || "Ahiia", margin + 11, 11);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(203, 213, 225);
+    doc.text(brandKit.tagline || "", margin + 11, 15);
+
+    // Kicker & Document Title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(199, 210, 254);
+    doc.text(documentType.toUpperCase(), margin, 24);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.setTextColor(255, 255, 255);
+    doc.text(documentTitle.toUpperCase(), margin, 30);
+
+    // Metadata Grid
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(0.2);
+    doc.line(margin, 34, pageWidth - margin, 34);
+
+    doc.setFontSize(6.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text("PREPARED FOR", margin, 38);
+    doc.text("PREPARED BY", pageWidth / 2, 38);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+    doc.text(companyProfile.preparedFor || "—", margin, 41.5);
+    doc.text(companyProfile.preparedBy || companyProfile.companyName || "—", pageWidth / 2, 41.5);
+
+    cursorY = 52;
   } else if (styleTemplate === "Corporate") {
     doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
     doc.rect(margin, cursorY, 6, 20, "F");
@@ -174,7 +296,7 @@ export async function exportToPdf({
     `Date: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}`,
   ].filter(Boolean);
 
-  if (metaRows.length > 0 && cursorY < pageHeight - 60) {
+  if (!isContract && metaRows.length > 0 && cursorY < pageHeight - 60) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(100, 116, 139);
@@ -195,23 +317,30 @@ export async function exportToPdf({
     checkPageBreak(30);
 
     // Section Title
-    if (styleTemplate === "Creative") {
-      doc.setFillColor(241, 245, 249);
-      doc.roundedRect(margin, cursorY - 4, contentWidth, 9, 1.5, 1.5, "F");
+    const displayTitle = isContract
+      ? (/^\d+[.)]/.test(sec.title) ? sec.title : `${idx + 1}. ${sec.title}`)
+      : (styleTemplate === "Corporate" ? sec.title.toUpperCase() : sec.title);
 
+    if (styleTemplate === "Creative" && !isContract) {
       doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
-      doc.rect(margin, cursorY - 4, 3, 9, "F");
+      doc.roundedRect(margin, cursorY - 2.5, 2, 6.5, 0.5, 0.5, "F");
 
-      doc.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
+      doc.setTextColor(accentRgb[0], accentRgb[1], accentRgb[2]);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.text(`${idx + 1}.  ${sec.title}`, margin + 6, cursorY + 2.5);
-      cursorY += 12;
+      doc.setFontSize(12);
+      doc.text(displayTitle, margin + 4.5, cursorY + 2);
+      cursorY += 9;
+    } else if (isContract) {
+      doc.setTextColor(15, 23, 42);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text(displayTitle, margin, cursorY);
+      cursorY += 8;
     } else if (styleTemplate === "Corporate") {
       doc.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
-      doc.text(`${sec.title.toUpperCase()}`, margin, cursorY);
+      doc.text(displayTitle, margin, cursorY);
 
       doc.setDrawColor(accentRgb[0], accentRgb[1], accentRgb[2]);
       doc.setLineWidth(0.8);
@@ -222,7 +351,7 @@ export async function exportToPdf({
       doc.setTextColor(15, 23, 42);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
-      doc.text(sec.title, margin, cursorY);
+      doc.text(displayTitle, margin, cursorY);
       cursorY += 7;
     }
 
@@ -291,49 +420,136 @@ export async function exportToPdf({
 
     // Key-Value rows or Financial Overview Card
     if (sec.isFinancialOverview && Array.isArray(sec.keyValueRows)) {
-      const cardHeight = sec.keyValueRows.length * 8 + (sec.disclosure ? 24 : 10);
-      checkPageBreak(cardHeight + 10);
+      if (styleTemplate === "Creative") {
+        checkPageBreak(sec.keyValueRows.length * 9 + 25);
+        sec.keyValueRows.forEach((row, rIdx) => {
+          const isFacility =
+            /facility sought|total/i.test(row.key) ||
+            rIdx === sec.keyValueRows.length - 1;
+          if (isFacility) {
+            doc.setFillColor(239, 244, 255);
+            doc.roundedRect(margin, cursorY - 3, contentWidth, 8, 2, 2, "F");
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9.5);
+            doc.setTextColor(15, 23, 42);
+            doc.text(row.key, margin + 4, cursorY + 1.5);
+            doc.setTextColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+            doc.text(row.value, pageWidth - margin - 4, cursorY + 1.5, {
+              align: "right",
+            });
+            cursorY += 10;
+          } else {
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(51, 65, 85);
+            doc.text(row.key, margin, cursorY);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(15, 23, 42);
+            doc.text(row.value, pageWidth - margin, cursorY, { align: "right" });
+            doc.setDrawColor(241, 245, 249);
+            doc.setLineWidth(0.3);
+            doc.line(margin, cursorY + 2, pageWidth - margin, cursorY + 2);
+            cursorY += 7.5;
+          }
+        });
 
-      doc.setFillColor(235, 243, 255);
-      doc.roundedRect(margin, cursorY - 2, contentWidth, cardHeight, 3, 3, "F");
-      doc.setDrawColor(219, 234, 254);
-      doc.setLineWidth(0.4);
-      doc.roundedRect(margin, cursorY - 2, contentWidth, cardHeight, 3, 3, "S");
+        if (sec.disclosure) {
+          cursorY += 2;
+          doc.setFillColor(248, 250, 255);
+          doc.roundedRect(margin, cursorY - 2, contentWidth, 14, 2, 2, "F");
+          doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.rect(margin, cursorY - 2, 2, 14, "F");
 
-      cursorY += 5;
-      sec.keyValueRows.forEach((row) => {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(51, 65, 85);
-        doc.text(row.key, margin + 6, cursorY);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.text(
+            sec.disclosure.title || "Figures provided by you",
+            margin + 5,
+            cursorY + 2.5
+          );
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9.5);
-        doc.setTextColor(15, 23, 42);
-        doc.text(row.value, pageWidth - margin - 6, cursorY, { align: "right" });
-        cursorY += 7.5;
-      });
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7.5);
+          doc.setTextColor(71, 85, 105);
+          const splitDisc = doc.splitTextToSize(
+            sec.disclosure.content || "",
+            contentWidth - 10
+          );
+          doc.text(splitDisc, margin + 5, cursorY + 6.5);
+          cursorY += 16;
+        }
+      } else {
+        const cardHeight =
+          sec.keyValueRows.length * 8 + (sec.disclosure ? 24 : 10);
+        checkPageBreak(cardHeight + 10);
 
-      if (sec.disclosure) {
-        cursorY += 2;
-        doc.setFillColor(255, 255, 255);
-        doc.roundedRect(margin + 5, cursorY - 2, contentWidth - 10, 14, 2, 2, "F");
+        doc.setFillColor(235, 243, 255);
+        doc.roundedRect(margin, cursorY - 2, contentWidth, cardHeight, 3, 3, "F");
         doc.setDrawColor(219, 234, 254);
-        doc.roundedRect(margin + 5, cursorY - 2, contentWidth - 10, 14, 2, 2, "S");
+        doc.setLineWidth(0.4);
+        doc.roundedRect(margin, cursorY - 2, contentWidth, cardHeight, 3, 3, "S");
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
-        doc.setTextColor(30, 58, 138);
-        doc.text(sec.disclosure.title || "Figures provided by you", margin + 8, cursorY + 2.5);
+        cursorY += 5;
+        sec.keyValueRows.forEach((row) => {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(51, 65, 85);
+          doc.text(row.key, margin + 6, cursorY);
 
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(7.5);
-        doc.setTextColor(71, 85, 105);
-        const splitDisc = doc.splitTextToSize(sec.disclosure.content || "", contentWidth - 18);
-        doc.text(splitDisc, margin + 8, cursorY + 6.5);
-        cursorY += 16;
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9.5);
+          doc.setTextColor(15, 23, 42);
+          doc.text(row.value, pageWidth - margin - 6, cursorY, {
+            align: "right",
+          });
+          cursorY += 7.5;
+        });
+
+        if (sec.disclosure) {
+          cursorY += 2;
+          doc.setFillColor(255, 255, 255);
+          doc.roundedRect(
+            margin + 5,
+            cursorY - 2,
+            contentWidth - 10,
+            14,
+            2,
+            2,
+            "F"
+          );
+          doc.setDrawColor(219, 234, 254);
+          doc.roundedRect(
+            margin + 5,
+            cursorY - 2,
+            contentWidth - 10,
+            14,
+            2,
+            2,
+            "S"
+          );
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(30, 58, 138);
+          doc.text(
+            sec.disclosure.title || "Figures provided by you",
+            margin + 8,
+            cursorY + 2.5
+          );
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7.5);
+          doc.setTextColor(71, 85, 105);
+          const splitDisc = doc.splitTextToSize(
+            sec.disclosure.content || "",
+            contentWidth - 18
+          );
+          doc.text(splitDisc, margin + 8, cursorY + 6.5);
+          cursorY += 16;
+        }
+        cursorY += 4;
       }
-      cursorY += 4;
     } else if (Array.isArray(sec.keyValueRows)) {
       sec.keyValueRows.forEach((row) => {
         if (!row?.key) return;
@@ -378,8 +594,142 @@ export async function exportToPdf({
       });
     }
 
+    // Guidance callout (Contracts)
+    if (
+      sec.guidance ||
+      (isContract &&
+        (/termination/i.test(sec.title || sec.key || "") ||
+          /term/i.test(sec.title || sec.key || "")))
+    ) {
+      checkPageBreak(22);
+      const guidTitle = sec.guidance?.title || "Guidance flagged this clause";
+      const guidContent =
+        sec.guidance?.content ||
+        "No liability cap or governing-law clause is present. Review before sending — Ahiia does not add legal terms you did not provide.";
+      doc.setFillColor(255, 251, 235);
+      doc.roundedRect(margin, cursorY, contentWidth, 16, 2, 2, "F");
+      doc.setDrawColor(253, 230, 138);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(margin, cursorY, contentWidth, 16, 2, 2, "S");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(146, 64, 14);
+      doc.text(guidTitle, margin + 4, cursorY + 5);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(120, 53, 15);
+      const splitGuid = doc.splitTextToSize(guidContent, contentWidth - 8);
+      doc.text(splitGuid, margin + 4, cursorY + 10);
+      cursorY += 20;
+    }
+
+    // In-clause Signatures
+    if (
+      sec.isSignatures ||
+      (isContract &&
+        /signature|signator|execution/i.test(sec.title || sec.key || ""))
+    ) {
+      checkPageBreak(30);
+      const colWidth = (contentWidth - 15) / 2;
+      const col2X = margin + colWidth + 15;
+
+      doc.setDrawColor(15, 23, 42);
+      doc.setLineWidth(0.5);
+      doc.line(margin, cursorY + 5, margin + colWidth, cursorY + 5);
+      doc.line(col2X, cursorY + 5, col2X + colWidth, cursorY + 5);
+
+      cursorY += 9;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text("For the Client", margin, cursorY);
+      doc.text("For the Provider", col2X, cursorY);
+
+      cursorY += 4.5;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(
+        companyProfile.preparedFor || "Lagos SME Partners Ltd.",
+        margin,
+        cursorY
+      );
+      doc.text(
+        companyProfile.companyName ||
+          companyProfile.preparedBy ||
+          "SolarTech Nigeria",
+        col2X,
+        cursorY
+      );
+
+      cursorY += 4;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text("Name, title and date", margin, cursorY);
+      doc.text("Name, title and date", col2X, cursorY);
+      cursorY += 10;
+    }
+
     cursorY += 6;
   });
+
+  // Automatic standalone Signatures section for contracts if not already present in sections
+  if (
+    isContract &&
+    !sections.some((s) =>
+      /signature|signator|execution/i.test(s.title || s.key || "")
+    )
+  ) {
+    checkPageBreak(35);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${sections.length + 1}. Signatures`, margin, cursorY);
+    cursorY += 8;
+
+    const colWidth = (contentWidth - 15) / 2;
+    const col2X = margin + colWidth + 15;
+
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(0.5);
+    doc.line(margin, cursorY + 5, margin + colWidth, cursorY + 5);
+    doc.line(col2X, cursorY + 5, col2X + colWidth, cursorY + 5);
+
+    cursorY += 9;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text("For the Client", margin, cursorY);
+    doc.text("For the Provider", col2X, cursorY);
+
+    cursorY += 4.5;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text(
+      companyProfile.preparedFor || "Lagos SME Partners Ltd.",
+      margin,
+      cursorY
+    );
+    doc.text(
+      companyProfile.companyName ||
+        companyProfile.preparedBy ||
+        "SolarTech Nigeria",
+      col2X,
+      cursorY
+    );
+
+    cursorY += 4;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text("Name, title and date", margin, cursorY);
+    doc.text("Name, title and date", col2X, cursorY);
+    cursorY += 10;
+  }
 
   // Add Page Numbers & Footer on all pages
   const totalPages = doc.getNumberOfPages();
@@ -389,8 +739,13 @@ export async function exportToPdf({
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
 
-    doc.setDrawColor(241, 245, 249);
-    doc.setLineWidth(0.4);
+    if (styleTemplate === "Creative") {
+      doc.setDrawColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+      doc.setLineWidth(0.8);
+    } else {
+      doc.setDrawColor(241, 245, 249);
+      doc.setLineWidth(0.4);
+    }
     doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
 
     doc.text(
@@ -737,10 +1092,22 @@ export async function exportToDocx({
   const primaryHex = cleanHex(brandKit.primaryColor, "0F172A");
   const accentHex = cleanHex(brandKit.secondaryColor, "2563EB");
 
+  const isContract =
+    documentType.toLowerCase().includes("contract") ||
+    documentType.toLowerCase().includes("agreement") ||
+    documentTitle.toLowerCase().includes("contract") ||
+    documentTitle.toLowerCase().includes("agreement");
+
+  const contractTitle =
+    isContract &&
+    (documentTitle.toLowerCase().includes("partnership")
+      ? "SERVICE AGREEMENT"
+      : documentTitle.toUpperCase());
+
   const docChildren = [
     // Document Title
     new Paragraph({
-      text: documentTitle,
+      text: isContract ? contractTitle : documentTitle,
       heading: HeadingLevel.HEADING_1,
       spacing: { after: 120 },
       style: { run: { color: primaryHex, bold: true, size: 40 } },
@@ -750,7 +1117,9 @@ export async function exportToDocx({
     new Paragraph({
       children: [
         new TextRun({
-          text: `${documentType.toUpperCase()}  ·  ${companyProfile.companyName || "Ahiia"}  ·  ${styleTemplate} Style`,
+          text: isContract
+            ? `CONTRACT  ·  ${companyProfile.companyName || "SolarTech Nigeria"}`
+            : `${documentType.toUpperCase()}  ·  ${companyProfile.companyName || "Ahiia"}  ·  ${styleTemplate} Style`,
           bold: true,
           color: accentHex,
           size: 20,
@@ -763,7 +1132,9 @@ export async function exportToDocx({
     new Paragraph({
       children: [
         new TextRun({
-          text: `Prepared for: ${companyProfile.preparedFor || "Client"}   |   Date: ${new Date().toLocaleDateString()}`,
+          text: isContract
+            ? `Between: ${companyProfile.preparedFor || "Lagos SME Partners Ltd."} ("the Client")   |   And: ${companyProfile.companyName || "SolarTech Nigeria"} ("the Provider")`
+            : `Prepared for: ${companyProfile.preparedFor || "Client"}   |   Date: ${new Date().toLocaleDateString()}`,
           color: "64748B",
           size: 18,
         }),
@@ -933,7 +1304,125 @@ export async function exportToDocx({
         );
       });
     }
+
+    // Guidance callout (Contracts)
+    if (
+      sec.guidance ||
+      (isContract &&
+        (/termination/i.test(sec.title || sec.key || "") ||
+          /term/i.test(sec.title || sec.key || "")))
+    ) {
+      docChildren.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: "Guidance flagged this clause: ",
+              bold: true,
+              color: "B45309",
+            }),
+            new TextRun({
+              text:
+                sec.guidance?.content ||
+                "No liability cap or governing-law clause is present. Review before sending — Ahiia does not add legal terms you did not provide.",
+              italics: true,
+              color: "92400E",
+            }),
+          ],
+          spacing: { before: 120, after: 160 },
+        })
+      );
+    }
   });
+
+  // Standalone signatures table for Contracts
+  if (isContract) {
+    docChildren.push(
+      new Paragraph({
+        text: "Signatures",
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 280, after: 160 },
+        style: { run: { color: primaryHex, bold: true, size: 26 } },
+      }),
+      new Table({
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: "___________________________",
+                        color: "0F172A",
+                      }),
+                    ],
+                  }),
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: "For the Client\n",
+                        color: "64748B",
+                        size: 18,
+                      }),
+                      new TextRun({
+                        text: companyProfile.preparedFor || "Lagos SME Partners Ltd.\n",
+                        bold: true,
+                        color: "0F172A",
+                        size: 20,
+                      }),
+                      new TextRun({
+                        text: "Name, title and date",
+                        color: "94A3B8",
+                        size: 16,
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+              new TableCell({
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: "___________________________",
+                        color: "0F172A",
+                      }),
+                    ],
+                  }),
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: "For the Provider\n",
+                        color: "64748B",
+                        size: 18,
+                      }),
+                      new TextRun({
+                        text:
+                          companyProfile.companyName ||
+                          companyProfile.preparedBy ||
+                          "SolarTech Nigeria\n",
+                        bold: true,
+                        color: "0F172A",
+                        size: 20,
+                      }),
+                      new TextRun({
+                        text: "Name, title and date",
+                        color: "94A3B8",
+                        size: 16,
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+        width: { size: 100, type: WidthType.PERCENTAGE },
+      })
+    );
+  }
 
   const doc = new DocxDocument({
     sections: [
