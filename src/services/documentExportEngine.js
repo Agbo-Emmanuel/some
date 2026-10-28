@@ -77,9 +77,13 @@ export async function exportToPdf({
   sections = [],
   filename,
 }) {
-  const isLandscape =
+  const isPitchDeck =
     documentType.toLowerCase().includes("deck") ||
-    documentType.toLowerCase().includes("pitch");
+    documentType.toLowerCase().includes("pitch") ||
+    documentTitle.toLowerCase().includes("deck") ||
+    documentTitle.toLowerCase().includes("pitch");
+
+  const isLandscape = isPitchDeck;
 
   const doc = new jsPDF({
     orientation: isLandscape ? "landscape" : "portrait",
@@ -95,6 +99,246 @@ export async function exportToPdf({
   const primaryRgb = hexToRgb(brandKit.primaryColor, [15, 23, 42]);
   const accentRgb = hexToRgb(brandKit.secondaryColor, [37, 99, 235]);
 
+  if (isPitchDeck) {
+    // Dedicated Corporate Pitch Deck presentation PDF export
+    const totalSlides = Math.max(1, sections.length);
+    const initials = (companyProfile.companyName || "SolarTech")
+      .split(" ")
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+
+    sections.forEach((sec, idx) => {
+      if (idx > 0) {
+        doc.addPage("a4", "landscape");
+      }
+
+      const isCover = idx === 0 || sec.isCover;
+
+      if (isCover) {
+        if (styleTemplate === "Minimal") {
+          // Minimal Cover Slide
+          // Standalone Brand badge
+          doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.roundedRect(margin + 5, margin + 6, 16, 16, 3.5, 3.5, "F");
+          doc.setTextColor(255, 255, 255);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(13);
+          doc.text(initials, margin + 13, margin + 17, { align: "center" });
+
+          // Hero headline
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(26);
+          doc.setTextColor(11, 21, 54);
+          const splitTitle = doc.splitTextToSize(sec.title || documentTitle, contentWidth - 40);
+          doc.text(splitTitle, margin + 5, 85);
+
+          // Subtitle
+          const subY = 85 + splitTitle.length * 10 + 6;
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(13.5);
+          doc.setTextColor(51, 65, 85);
+          doc.text(sec.subtitle || "Series-A raise • 2026", margin + 5, subY);
+
+          // Minimal Footer: Company • Tagline | Page
+          doc.setDrawColor(241, 245, 249);
+          doc.setLineWidth(0.4);
+          doc.line(margin + 5, pageHeight - 18, pageWidth - margin, pageHeight - 18);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(148, 163, 184);
+          doc.text(
+            `${companyProfile.companyName || "SolarTech Nigeria"} • ${brandKit.tagline || "Clean power, built to last"}`,
+            margin + 5,
+            pageHeight - 10
+          );
+          doc.text(`${idx + 1} / ${totalSlides}`, pageWidth - margin, pageHeight - 10, { align: "right" });
+        } else {
+          // Corporate Cover Slide
+          // Left thick vertical blue bar
+          doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.rect(0, 0, 7, pageHeight, "F");
+
+          // Brand logo badge
+          doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.roundedRect(margin + 5, margin + 4, 15, 15, 3, 3, "F");
+          doc.setTextColor(255, 255, 255);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(12);
+          doc.text(initials, margin + 12.5, margin + 14, { align: "center" });
+
+          // Brand name & tagline
+          doc.setFontSize(13);
+          doc.setTextColor(11, 21, 54);
+          doc.text(companyProfile.companyName || "SolarTech Nigeria", margin + 25, margin + 10);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8.5);
+          doc.setTextColor(100, 116, 139);
+          doc.text(brandKit.tagline || "Clean power, built to last", margin + 25, margin + 16);
+
+          // Hero headline
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(26);
+          doc.setTextColor(11, 21, 54);
+          const splitTitle = doc.splitTextToSize(sec.title || documentTitle, contentWidth - 40);
+          doc.text(splitTitle, margin + 5, 85);
+
+          // Blue accent bar
+          const barY = 85 + splitTitle.length * 10 + 4;
+          doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.roundedRect(margin + 5, barY, 22, 2, 1, 1, "F");
+
+          // Subtitle
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(14);
+          doc.setTextColor(11, 21, 54);
+          doc.text(sec.subtitle || "Series-A raise • 2026", margin + 5, barY + 12);
+
+          // Footer
+          doc.setDrawColor(226, 232, 240);
+          doc.setLineWidth(0.3);
+          doc.line(margin + 5, pageHeight - 18, pageWidth - margin, pageHeight - 18);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(100, 116, 139);
+          doc.text(sec.footerNote || "Confidential • Investor presentation", margin + 5, pageHeight - 10);
+          doc.text(`${idx + 1} / ${totalSlides}`, pageWidth - margin, pageHeight - 10, { align: "right" });
+        }
+      } else {
+        // Content Slide
+        if (styleTemplate === "Minimal") {
+          // Minimal kicker (muted gray, spaced)
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9.5);
+          doc.setTextColor(148, 163, 184);
+          const kickerText = (sec.kicker || sec.title || "Traction").toUpperCase();
+          doc.text(kickerText, margin, margin + 5);
+        } else {
+          // Corporate kicker (blue, with top-right dash)
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10.5);
+          doc.setTextColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.text(sec.kicker || sec.title || "Traction", margin, margin + 5);
+
+          doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.roundedRect(pageWidth - margin - 16, margin + 3, 16, 1.5, 0.75, 0.75, "F");
+        }
+
+        // Headline
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(22);
+        doc.setTextColor(11, 21, 54);
+        const splitHeadline = doc.splitTextToSize(sec.title || "", contentWidth);
+        doc.text(splitHeadline, margin, margin + 18);
+
+        let contentY = margin + 18 + splitHeadline.length * 9 + 4;
+
+        // Metric Card (if present)
+        if (sec.metricValue) {
+          if (styleTemplate === "Minimal") {
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(margin, contentY, 65, 22, 4, 4, "F");
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.4);
+            doc.roundedRect(margin, contentY, 65, 22, 4, 4, "S");
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(20);
+            doc.setTextColor(11, 21, 54);
+            doc.text(sec.metricValue, margin + 5, contentY + 11);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8.5);
+            doc.setTextColor(100, 116, 139);
+            doc.text(sec.metricLabel || "", margin + 5, contentY + 17);
+          } else {
+            doc.setFillColor(239, 244, 255);
+            doc.roundedRect(margin, contentY, 65, 22, 4, 4, "F");
+            doc.setDrawColor(219, 234, 254);
+            doc.setLineWidth(0.4);
+            doc.roundedRect(margin, contentY, 65, 22, 4, 4, "S");
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(20);
+            doc.setTextColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+            doc.text(sec.metricValue, margin + 5, contentY + 11);
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text(sec.metricLabel || "", margin + 5, contentY + 17);
+          }
+
+          contentY += 30;
+        }
+
+        // Bullets
+        if (Array.isArray(sec.bullets) && sec.bullets.length > 0) {
+          sec.bullets.forEach((bullet, bIdx) => {
+            if (styleTemplate === "Minimal") {
+              // Numbered prefix 01, 02, 03
+              doc.setFont("helvetica", "bold");
+              doc.setFontSize(10.5);
+              doc.setTextColor(148, 163, 184);
+              const numStr = String(bIdx + 1).padStart(2, "0");
+              doc.text(numStr, margin, contentY);
+
+              doc.setFont("helvetica", "normal");
+              doc.setFontSize(12);
+              doc.setTextColor(30, 41, 59);
+              const splitBullet = doc.splitTextToSize(bullet, contentWidth - 14);
+              doc.text(splitBullet, margin + 9, contentY);
+              contentY += splitBullet.length * 7 + 4;
+            } else {
+              // Solid circle bullet
+              doc.setFillColor(15, 23, 42);
+              doc.circle(margin + 2.5, contentY - 1.2, 1.2, "F");
+
+              doc.setFont("helvetica", "bold");
+              doc.setFontSize(12);
+              doc.setTextColor(30, 41, 59);
+              const splitBullet = doc.splitTextToSize(bullet, contentWidth - 12);
+              doc.text(splitBullet, margin + 8, contentY);
+              contentY += splitBullet.length * 7 + 4;
+            }
+          });
+        }
+
+        // Paragraphs if present
+        if (Array.isArray(sec.paragraphs) && sec.paragraphs.length > 0) {
+          sec.paragraphs.forEach((p) => {
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(11);
+            doc.setTextColor(51, 65, 85);
+            const splitP = doc.splitTextToSize(p, contentWidth);
+            doc.text(splitP, margin, contentY);
+            contentY += splitP.length * 6 + 4;
+          });
+        }
+
+        // Slide Footer
+        doc.setDrawColor(241, 245, 249);
+        doc.setLineWidth(0.4);
+        doc.line(margin, pageHeight - 16, pageWidth - margin, pageHeight - 16);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(148, 163, 184);
+        doc.text(companyProfile.companyName || "SolarTech Nigeria", margin, pageHeight - 9);
+        doc.text(`${idx + 1} / ${totalSlides}`, pageWidth - margin, pageHeight - 9, { align: "right" });
+      }
+    });
+
+    const finalFilename =
+      filename ||
+      `${documentTitle.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_")}_${styleTemplate}.pdf`;
+    const pdfBlob = doc.output("blob");
+    triggerBlobDownload(pdfBlob, finalFilename);
+    return;
+  }
+
   let cursorY = margin;
 
   const isContract =
@@ -103,11 +347,200 @@ export async function exportToPdf({
     documentTitle.toLowerCase().includes("contract") ||
     documentTitle.toLowerCase().includes("agreement");
 
+  const isMarketingPlan =
+    !isContract &&
+    (documentType.toLowerCase().includes("marketing") ||
+      documentTitle.toLowerCase().includes("marketing"));
+
   // Header banner based on style and document type
-  if (isContract) {
-    // Contract Header matching platform design
+  if (isMarketingPlan) {
+    if (styleTemplate === "Creative") {
+      // Creative Midnight Navy Top Banner (#131B4D)
+      doc.setFillColor(19, 27, 77);
+      doc.rect(0, 0, pageWidth, 48, "F");
+
+      // Brand Avatar & Company name
+      doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+      doc.roundedRect(margin, 8, 8, 8, 1.5, 1.5, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      const initials = (companyProfile.companyName || "SolarTech")
+        .split(" ")
+        .filter(Boolean)
+        .map((w) => w[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase();
+      doc.text(initials, margin + 4, 13.5, { align: "center" });
+
+      doc.setFontSize(10);
+      doc.text(companyProfile.companyName || "SolarTech Nigeria", margin + 11, 11);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(203, 213, 225);
+      doc.text(brandKit.tagline || "Clean power, built to last", margin + 11, 15);
+
+      // Kicker & Document Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(199, 210, 254);
+      doc.text("MARKETING PLAN", margin, 24);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(15);
+      doc.setTextColor(255, 255, 255);
+      const planTitle = documentTitle && documentTitle.toLowerCase().includes("plan")
+        ? documentTitle.toUpperCase()
+        : `${(documentTitle || "MARKETING PLAN").toUpperCase()} 2026`;
+      doc.text(planTitle, margin, 31);
+
+      // Metadata Grid
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(0.2);
+      doc.line(margin, 35, pageWidth - margin, 35);
+
+      doc.setFontSize(6.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text("PREPARED FOR", margin, 39);
+      doc.text("PREPARED BY", pageWidth / 2, 39);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      doc.text(companyProfile.preparedFor || "Commercial team", margin, 43);
+      doc.text(companyProfile.preparedBy || companyProfile.companyName || "SolarTech Nigeria", pageWidth / 2, 43);
+
+      cursorY = 56;
+    } else if (styleTemplate === "Corporate") {
+      // Corporate Executive Header
+      doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+      doc.roundedRect(margin, cursorY, 8.5, 8.5, 2, 2, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      const initials = (companyProfile.companyName || "SolarTech")
+        .split(" ")
+        .filter(Boolean)
+        .map((w) => w[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase();
+      doc.text(initials, margin + 4.25, cursorY + 5.8, { align: "center" });
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.text(companyProfile.companyName || "SolarTech Nigeria", margin + 12, cursorY + 4);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(brandKit.tagline || "Clean power, built to last", margin + 12, cursorY + 8);
+
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text("Marketing Plan", pageWidth - margin, cursorY + 5.5, { align: "right" });
+
+      cursorY += 12;
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.4);
+      doc.line(margin, cursorY, pageWidth - margin, cursorY);
+      cursorY += 8;
+
+      // Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(15, 23, 42);
+      const planTitle = documentTitle && documentTitle.toLowerCase().includes("plan")
+        ? documentTitle.toUpperCase()
+        : `${(documentTitle || "MARKETING PLAN").toUpperCase()} 2026`;
+      doc.text(planTitle, margin, cursorY);
+      cursorY += 8;
+
+      // Metadata
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(148, 163, 184);
+      doc.text("PREPARED FOR", margin, cursorY);
+      doc.text("PREPARED BY", pageWidth / 2, cursorY);
+      cursorY += 4.5;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(companyProfile.preparedFor || "Commercial team", margin, cursorY);
+      doc.text(companyProfile.preparedBy || companyProfile.companyName || "SolarTech Nigeria", pageWidth / 2, cursorY);
+      cursorY += 7;
+
+      // Dark bottom line
+      doc.setDrawColor(15, 23, 42);
+      doc.setLineWidth(0.8);
+      doc.line(margin, cursorY, pageWidth - margin, cursorY);
+      cursorY += 10;
+    } else {
+      // Minimal Header
+      doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+      doc.roundedRect(margin, cursorY, 8.5, 8.5, 2, 2, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      const initials = (companyProfile.companyName || "SolarTech")
+        .split(" ")
+        .filter(Boolean)
+        .map((w) => w[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase();
+      doc.text(initials, margin + 4.25, cursorY + 5.8, { align: "center" });
+
+      cursorY += 13;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text("Marketing Plan", margin, cursorY);
+      cursorY += 7;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(17);
+      doc.setTextColor(15, 23, 42);
+      const planTitle = documentTitle && documentTitle.toLowerCase().includes("plan")
+        ? documentTitle.toUpperCase()
+        : `${(documentTitle || "MARKETING PLAN").toUpperCase()} 2026`;
+      doc.text(planTitle, margin, cursorY);
+      cursorY += 6;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(brandKit.tagline || "Clean power, built to last", margin, cursorY);
+      cursorY += 9;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(148, 163, 184);
+      doc.text("PREPARED FOR", margin, cursorY);
+      doc.text("PREPARED BY", pageWidth / 2, cursorY);
+      cursorY += 4.5;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(companyProfile.preparedFor || "Commercial team", margin, cursorY);
+      doc.text(companyProfile.preparedBy || companyProfile.companyName || "SolarTech Nigeria", pageWidth / 2, cursorY);
+      cursorY += 12;
+    }
+  } else if (isContract && styleTemplate !== "Minimal") {
+    // Contract Navy Cover Banner matching platform design
+    doc.setFillColor(19, 27, 77); // #131B4D
+    doc.rect(0, 0, pageWidth, 52, "F");
+
+    // Brand Avatar & Company name
     doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
-    doc.roundedRect(margin, cursorY, 9, 9, 2, 2, "F");
+    doc.roundedRect(margin, 8, 8, 8, 1.5, 1.5, "F");
 
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
@@ -119,30 +552,88 @@ export async function exportToPdf({
       .join("")
       .substring(0, 2)
       .toUpperCase();
-    doc.text(initials, margin + 4.5, cursorY + 6, { align: "center" });
+    doc.text(initials, margin + 4, 13.5, { align: "center" });
+
+    doc.setFontSize(10);
+    doc.text(companyProfile.companyName || "SolarTech Nigeria", margin + 11, 11);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(203, 213, 225);
+    doc.text(brandKit.tagline || "Clean power, built to last", margin + 11, 15);
+
+    // Kicker & Document Title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(199, 210, 254);
+    doc.text("CONTRACT", margin, 24);
+
+    const contractTitle =
+      documentTitle &&
+      (documentTitle.toLowerCase().includes("contract") ||
+        documentTitle.toLowerCase().includes("agreement"))
+        ? documentTitle.toLowerCase().includes("partnership")
+          ? "SERVICE AGREEMENT"
+          : documentTitle.toUpperCase()
+        : `${(documentTitle || "SERVICE").toUpperCase()} AGREEMENT`;
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
-    doc.text(
-      companyProfile.companyName || "SolarTech Nigeria",
-      margin + 12,
-      cursorY + 4
-    );
+    doc.setFontSize(14.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(contractTitle, margin, 31);
+
+    // Two-column metadata: Between / And
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(0.2);
+    doc.line(margin, 36, pageWidth - margin, 36);
+
+    doc.setFontSize(6.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text("BETWEEN", margin, 40);
+    doc.text("AND", pageWidth / 2, 40);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+    const clientText = companyProfile.preparedFor
+      ? companyProfile.preparedFor.toLowerCase().includes("client")
+        ? companyProfile.preparedFor
+        : `${companyProfile.preparedFor} ("the Client")`
+      : 'Lagos SME Partners Ltd. ("the Client")';
+    const providerText = companyProfile.companyName
+      ? companyProfile.companyName.toLowerCase().includes("provider")
+        ? companyProfile.companyName
+        : `${companyProfile.companyName} ("the Provider")`
+      : 'SolarTech Nigeria ("the Provider")';
+
+    doc.text(clientText, margin, 44);
+    doc.text(providerText, pageWidth / 2, 44);
+
+    cursorY = 60;
+  } else if (isContract) {
+    // Minimal Contract Header
+    doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+    doc.roundedRect(margin, cursorY, 8.5, 8.5, 2, 2, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    const initials = (companyProfile.companyName || "SolarTech")
+      .split(" ")
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+    doc.text(initials, margin + 4.25, cursorY + 5.8, { align: "center" });
+
+    cursorY += 12;
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139);
-    doc.text(brandKit.tagline || "", margin + 12, cursorY + 8);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
     doc.setTextColor(148, 163, 184);
-    doc.text("Contract", pageWidth - margin, cursorY + 5, { align: "right" });
+    doc.text("Contract", margin, cursorY);
+    cursorY += 7;
 
-    cursorY += 16;
-
-    // Document Title
     const contractTitle =
       documentTitle &&
       (documentTitle.toLowerCase().includes("contract") ||
@@ -156,9 +647,14 @@ export async function exportToPdf({
     doc.setFontSize(18);
     doc.setTextColor(15, 23, 42);
     doc.text(contractTitle, margin, cursorY);
+    cursorY += 7;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(brandKit.tagline || "Clean power, built to last", margin, cursorY);
     cursorY += 10;
 
-    // Between / And Parties
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
@@ -183,11 +679,7 @@ export async function exportToPdf({
     doc.text(clientText, margin, cursorY);
     doc.text(providerText, pageWidth / 2, cursorY);
 
-    cursorY += 7;
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.4);
-    doc.line(margin, cursorY, pageWidth - margin, cursorY);
-    cursorY += 10;
+    cursorY += 12;
   } else if (styleTemplate === "Creative") {
     // Creative Midnight Navy Top Banner (#131B4D)
     doc.setFillColor(19, 27, 77);
@@ -321,7 +813,7 @@ export async function exportToPdf({
       ? (/^\d+[.)]/.test(sec.title) ? sec.title : `${idx + 1}. ${sec.title}`)
       : (styleTemplate === "Corporate" ? sec.title.toUpperCase() : sec.title);
 
-    if (styleTemplate === "Creative" && !isContract) {
+    if (styleTemplate === "Creative" || (isContract && styleTemplate !== "Minimal")) {
       doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
       doc.roundedRect(margin, cursorY - 2.5, 2, 6.5, 0.5, 0.5, "F");
 
@@ -384,15 +876,45 @@ export async function exportToPdf({
       sec.bullets.forEach((b) => {
         if (!b) return;
         checkPageBreak(10);
-        doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
-        doc.circle(margin + 2, cursorY - 1, 1, "F");
+        if ((isContract || isMarketingPlan) && styleTemplate === "Minimal") {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9.5);
+          doc.setTextColor(51, 65, 85);
+          doc.text("—", margin, cursorY);
+          const splitText = doc.splitTextToSize(b, contentWidth - 8);
+          doc.text(splitText, margin + 6, cursorY);
+          cursorY += splitText.length * 5 + 3;
+        } else if (isMarketingPlan && styleTemplate === "Corporate") {
+          doc.setFillColor(15, 23, 42);
+          doc.circle(margin + 2, cursorY - 1, 1, "F");
 
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9.5);
-        doc.setTextColor(51, 65, 85);
-        const splitText = doc.splitTextToSize(b, contentWidth - 8);
-        doc.text(splitText, margin + 6, cursorY);
-        cursorY += splitText.length * 5 + 2;
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9.5);
+          doc.setTextColor(51, 65, 85);
+          const splitText = doc.splitTextToSize(b, contentWidth - 8);
+          doc.text(splitText, margin + 6, cursorY);
+          cursorY += splitText.length * 5 + 2;
+        } else if (isMarketingPlan && styleTemplate === "Creative") {
+          doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.rect(margin + 1, cursorY - 2.5, 2, 2, "F");
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9.5);
+          doc.setTextColor(51, 65, 85);
+          const splitText = doc.splitTextToSize(b, contentWidth - 8);
+          doc.text(splitText, margin + 6, cursorY);
+          cursorY += splitText.length * 5 + 2;
+        } else {
+          doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.circle(margin + 2, cursorY - 1, 1, "F");
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9.5);
+          doc.setTextColor(51, 65, 85);
+          const splitText = doc.splitTextToSize(b, contentWidth - 8);
+          doc.text(splitText, margin + 6, cursorY);
+          cursorY += splitText.length * 5 + 2;
+        }
       });
     }
 
@@ -419,7 +941,82 @@ export async function exportToPdf({
     }
 
     // Key-Value rows or Financial Overview Card
-    if (sec.isFinancialOverview && Array.isArray(sec.keyValueRows)) {
+    if (isMarketingPlan && sec.isFinancialOverview && Array.isArray(sec.keyValueRows)) {
+      checkPageBreak(sec.keyValueRows.length * 8 + 20);
+      sec.keyValueRows.forEach((row, rIdx) => {
+        const isTotal =
+          row.isTotal ||
+          rIdx === sec.keyValueRows.length - 1 ||
+          /budget|total/i.test(row.key);
+        if (isTotal) {
+          if (styleTemplate === "Creative") {
+            doc.setFillColor(239, 244, 255);
+            doc.roundedRect(margin, cursorY - 2.5, contentWidth, 8, 2, 2, "F");
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9.5);
+            doc.setTextColor(15, 23, 42);
+            doc.text(row.key, margin + 4, cursorY + 2.5);
+            doc.setTextColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+            doc.text(row.value, pageWidth - margin - 4, cursorY + 2.5, {
+              align: "right",
+            });
+            cursorY += 11;
+          } else if (styleTemplate === "Corporate") {
+            doc.setFillColor(248, 250, 252);
+            doc.roundedRect(margin, cursorY - 2.5, contentWidth, 8, 2, 2, "F");
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(margin, cursorY - 2.5, contentWidth, 8, 2, 2, "S");
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9.5);
+            doc.setTextColor(15, 23, 42);
+            doc.text(row.key, margin + 4, cursorY + 2.5);
+            doc.text(row.value, pageWidth - margin - 4, cursorY + 2.5, {
+              align: "right",
+            });
+            cursorY += 11;
+          } else {
+            // Minimal
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.line(margin, cursorY - 1, pageWidth - margin, cursorY - 1);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9.5);
+            doc.setTextColor(15, 23, 42);
+            doc.text(row.key, margin, cursorY + 3);
+            doc.text(row.value, pageWidth - margin, cursorY + 3, {
+              align: "right",
+            });
+            cursorY += 9;
+          }
+        } else {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(51, 65, 85);
+          doc.text(row.key, margin, cursorY);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(15, 23, 42);
+          doc.text(row.value, pageWidth - margin, cursorY, { align: "right" });
+          cursorY += 6.5;
+        }
+      });
+      cursorY += 4;
+    } else if (isContract && Array.isArray(sec.keyValueRows)) {
+      checkPageBreak(sec.keyValueRows.length * 8 + 10);
+      sec.keyValueRows.forEach((row) => {
+        if (!row?.key) return;
+        const isBoldKey = /contract value|total|facility/i.test(row.key);
+        doc.setFont("helvetica", isBoldKey ? "bold" : "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(row.key, margin, cursorY);
+
+        doc.setFont("helvetica", "bold");
+        doc.text(row.value || "—", pageWidth - margin, cursorY, { align: "right" });
+        cursorY += 6.5;
+      });
+      cursorY += 4;
+    } else if (sec.isFinancialOverview && Array.isArray(sec.keyValueRows)) {
       if (styleTemplate === "Creative") {
         checkPageBreak(sec.keyValueRows.length * 9 + 25);
         sec.keyValueRows.forEach((row, rIdx) => {
@@ -606,22 +1203,21 @@ export async function exportToPdf({
       const guidContent =
         sec.guidance?.content ||
         "No liability cap or governing-law clause is present. Review before sending — Ahiia does not add legal terms you did not provide.";
-      doc.setFillColor(255, 251, 235);
-      doc.roundedRect(margin, cursorY, contentWidth, 16, 2, 2, "F");
-      doc.setDrawColor(253, 230, 138);
-      doc.setLineWidth(0.3);
-      doc.roundedRect(margin, cursorY, contentWidth, 16, 2, 2, "S");
+      doc.setFillColor(255, 253, 245);
+      doc.roundedRect(margin, cursorY, contentWidth, 16, 1.5, 1.5, "F");
+      doc.setFillColor(245, 158, 11);
+      doc.rect(margin, cursorY, 1.5, 16, "F");
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
-      doc.setTextColor(146, 64, 14);
-      doc.text(guidTitle, margin + 4, cursorY + 5);
+      doc.setTextColor(180, 83, 9);
+      doc.text(guidTitle, margin + 5, cursorY + 5);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.setTextColor(120, 53, 15);
-      const splitGuid = doc.splitTextToSize(guidContent, contentWidth - 8);
-      doc.text(splitGuid, margin + 4, cursorY + 10);
+      const splitGuid = doc.splitTextToSize(guidContent, contentWidth - 10);
+      doc.text(splitGuid, margin + 5, cursorY + 10);
       cursorY += 20;
     }
 
@@ -739,7 +1335,7 @@ export async function exportToPdf({
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
 
-    if (styleTemplate === "Creative") {
+    if (styleTemplate === "Creative" || (isContract && styleTemplate !== "Minimal")) {
       doc.setDrawColor(accentRgb[0], accentRgb[1], accentRgb[2]);
       doc.setLineWidth(0.8);
     } else {
@@ -748,11 +1344,19 @@ export async function exportToPdf({
     }
     doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
 
-    doc.text(
-      `${documentTitle} · ${styleTemplate} style`,
-      margin,
-      pageHeight - 7
-    );
+    if (isContract || isMarketingPlan) {
+      doc.text(
+        companyProfile.companyName || "SolarTech Nigeria",
+        margin,
+        pageHeight - 7
+      );
+    } else {
+      doc.text(
+        `${documentTitle} · ${styleTemplate} style`,
+        margin,
+        pageHeight - 7
+      );
+    }
     doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 7, {
       align: "right",
     });
@@ -790,12 +1394,147 @@ export async function exportToPptx({
   const primaryHex = cleanHex(brandKit.primaryColor, "0F172A");
   const accentHex = cleanHex(brandKit.secondaryColor, "2563EB");
 
+  const isPitchDeck =
+    documentType.toLowerCase().includes("deck") ||
+    documentType.toLowerCase().includes("pitch") ||
+    documentTitle.toLowerCase().includes("deck") ||
+    documentTitle.toLowerCase().includes("pitch");
+
   // --------------------------------------------------------------------------
   // SLIDE 1: COVER / TITLE SLIDE
   // --------------------------------------------------------------------------
   const coverSlide = pres.addSlide();
 
-  if (styleTemplate === "Creative") {
+  if (isPitchDeck) {
+    coverSlide.background = { color: "FFFFFF" };
+    if (styleTemplate !== "Minimal") {
+      // Left brand blue vertical accent bar
+      coverSlide.addShape(pres.ShapeType.rect, {
+        x: 0,
+        y: 0,
+        w: 0.25,
+        h: "100%",
+        fill: { color: accentHex },
+      });
+    }
+
+    const initials = (companyProfile.companyName || "SolarTech")
+      .split(" ")
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+
+    // Badge
+    coverSlide.addShape(pres.ShapeType.roundRect, {
+      x: 1.0,
+      y: 0.8,
+      w: 0.8,
+      h: 0.8,
+      fill: { color: accentHex },
+      rectRadius: 0.15,
+    });
+    coverSlide.addText(initials, {
+      x: 1.0,
+      y: 0.8,
+      w: 0.8,
+      h: 0.8,
+      fontSize: 16,
+      bold: true,
+      color: "FFFFFF",
+      align: "center",
+      valign: "middle",
+      fontFace: "Arial",
+    });
+
+    if (styleTemplate !== "Minimal") {
+      // Company & Tagline beside badge in Corporate
+      coverSlide.addText(companyProfile.companyName || "SolarTech Nigeria", {
+        x: 2.0,
+        y: 0.8,
+        w: 7.0,
+        fontSize: 14,
+        bold: true,
+        color: "0F172A",
+        fontFace: "Arial",
+      });
+      coverSlide.addText(brandKit.tagline || "Clean power, built to last", {
+        x: 2.0,
+        y: 1.15,
+        w: 7.0,
+        fontSize: 10,
+        color: "64748B",
+        fontFace: "Arial",
+      });
+    }
+
+    // Hero title
+    coverSlide.addText(documentTitle || "Powering Nigerian business without the grid", {
+      x: 1.0,
+      y: 2.6,
+      w: 10.5,
+      fontSize: 34,
+      bold: true,
+      color: "0B1536",
+      fontFace: "Arial",
+      lineSpacing: 40,
+    });
+
+    if (styleTemplate !== "Minimal") {
+      // Accent line
+      coverSlide.addShape(pres.ShapeType.roundRect, {
+        x: 1.0,
+        y: 4.4,
+        w: 1.2,
+        h: 0.08,
+        fill: { color: accentHex },
+        rectRadius: 0.04,
+      });
+    }
+
+    // Subtitle
+    coverSlide.addText(sections[0]?.subtitle || "Series-A raise • 2026", {
+      x: 1.0,
+      y: styleTemplate === "Minimal" ? 4.2 : 4.8,
+      w: 9.0,
+      fontSize: 16,
+      bold: styleTemplate !== "Minimal",
+      color: styleTemplate === "Minimal" ? "475569" : "0B1536",
+      fontFace: "Arial",
+    });
+
+    // Footer
+    coverSlide.addShape(pres.ShapeType.line, {
+      x: 1.0,
+      y: 6.6,
+      w: 11.3,
+      h: 0,
+      line: { color: "E2E8F0", width: 1 },
+    });
+    coverSlide.addText(
+      styleTemplate === "Minimal"
+        ? `${companyProfile.companyName || "SolarTech Nigeria"} • ${brandKit.tagline || "Clean power, built to last"}`
+        : "Confidential • Investor presentation",
+      {
+        x: 1.0,
+        y: 6.75,
+        w: 8.0,
+        fontSize: 10,
+        color: "94A3B8",
+        fontFace: "Arial",
+      }
+    );
+    coverSlide.addText(`1 / ${Math.max(1, sections.length)}`, {
+      x: 10.3,
+      y: 6.75,
+      w: 2.0,
+      fontSize: 10,
+      color: "94A3B8",
+      fontFace: "Arial",
+      align: "right",
+    });
+  } else if (styleTemplate === "Creative") {
     coverSlide.background = { color: primaryHex };
     // Accent shape
     coverSlide.addShape(pres.ShapeType.rect, {
@@ -915,8 +1654,178 @@ export async function exportToPptx({
   // CONTENT SLIDES (One per Section)
   // --------------------------------------------------------------------------
   sections.forEach((sec, idx) => {
+    if (isPitchDeck && idx === 0 && (sec.isCover || sec.key === "cover")) return;
     const slide = pres.addSlide();
     slide.background = { color: styleTemplate === "Creative" ? "0F172A" : "FFFFFF" };
+
+    if (isPitchDeck) {
+      if (styleTemplate === "Minimal") {
+        // Minimal Kicker: Muted gray, spaced, no right dash
+        slide.addText((sec.kicker || sec.title || "Traction").toUpperCase(), {
+          x: 0.8,
+          y: 0.5,
+          w: 6.0,
+          fontSize: 11,
+          bold: true,
+          color: "94A3B8",
+          fontFace: "Arial",
+        });
+      } else {
+        // Corporate Kicker: Vibrant blue with top-right dash
+        slide.addText(sec.kicker || sec.title || "Traction", {
+          x: 0.8,
+          y: 0.5,
+          w: 6.0,
+          fontSize: 13,
+          bold: true,
+          color: accentHex,
+          fontFace: "Arial",
+        });
+
+        // Top right dash
+        slide.addShape(pres.ShapeType.roundRect, {
+          x: 11.5,
+          y: 0.55,
+          w: 0.8,
+          h: 0.06,
+          fill: { color: accentHex },
+          rectRadius: 0.03,
+        });
+      }
+
+      // Headline
+      slide.addText(sec.title, {
+        x: 0.8,
+        y: 1.0,
+        w: 11.5,
+        fontSize: 26,
+        bold: true,
+        color: "0B1536",
+        fontFace: "Arial",
+      });
+
+      let currentY = 1.9;
+
+      // Metric card
+      if (sec.metricValue) {
+        if (styleTemplate === "Minimal") {
+          slide.addShape(pres.ShapeType.roundRect, {
+            x: 0.8,
+            y: currentY,
+            w: 3.2,
+            h: 1.2,
+            fill: { color: "FFFFFF" },
+            line: { color: "E2E8F0", width: 1 },
+            rectRadius: 0.15,
+          });
+          slide.addText(sec.metricValue, {
+            x: 1.0,
+            y: currentY + 0.1,
+            w: 2.8,
+            fontSize: 24,
+            bold: true,
+            color: "0B1536",
+            fontFace: "Arial",
+          });
+          slide.addText(sec.metricLabel || "", {
+            x: 1.0,
+            y: currentY + 0.65,
+            w: 2.8,
+            fontSize: 10,
+            bold: false,
+            color: "64748B",
+            fontFace: "Arial",
+          });
+        } else {
+          slide.addShape(pres.ShapeType.roundRect, {
+            x: 0.8,
+            y: currentY,
+            w: 3.2,
+            h: 1.2,
+            fill: { color: "EFF4FF" },
+            line: { color: "DBEAFE", width: 1 },
+            rectRadius: 0.15,
+          });
+          slide.addText(sec.metricValue, {
+            x: 1.0,
+            y: currentY + 0.1,
+            w: 2.8,
+            fontSize: 24,
+            bold: true,
+            color: accentHex,
+            fontFace: "Arial",
+          });
+          slide.addText(sec.metricLabel || "", {
+            x: 1.0,
+            y: currentY + 0.65,
+            w: 2.8,
+            fontSize: 10,
+            bold: true,
+            color: "475569",
+            fontFace: "Arial",
+          });
+        }
+        currentY += 1.5;
+      }
+
+      // Bullets
+      if (Array.isArray(sec.bullets) && sec.bullets.length > 0) {
+        if (styleTemplate === "Minimal") {
+          const numberedItems = sec.bullets.map((b, bI) => ({
+            text: `${String(bI + 1).padStart(2, "0")}   ${b}\n`,
+            options: { bullet: false, color: "1E293B", fontSize: 14, bold: true },
+          }));
+          slide.addText(numberedItems, {
+            x: 0.8,
+            y: currentY,
+            w: 11.5,
+            h: 3.2,
+            fontFace: "Arial",
+            lineSpacing: 28,
+          });
+        } else {
+          const bulletItems = sec.bullets.map((b) => ({
+            text: b,
+            options: { bullet: true, color: "1E293B", fontSize: 14, bold: true },
+          }));
+          slide.addText(bulletItems, {
+            x: 0.8,
+            y: currentY,
+            w: 11.5,
+            h: 3.2,
+            fontFace: "Arial",
+            lineSpacing: 26,
+          });
+        }
+      }
+
+      // Footer
+      slide.addShape(pres.ShapeType.line, {
+        x: 0.8,
+        y: 6.7,
+        w: 11.7,
+        h: 0,
+        line: { color: "E2E8F0", width: 1 },
+      });
+      slide.addText(companyProfile.companyName || "SolarTech Nigeria", {
+        x: 0.8,
+        y: 6.85,
+        w: 6.0,
+        fontSize: 10,
+        color: "94A3B8",
+        fontFace: "Arial",
+      });
+      slide.addText(`${idx + 1} / ${sections.length}`, {
+        x: 10.5,
+        y: 6.85,
+        w: 2.0,
+        fontSize: 10,
+        color: "94A3B8",
+        fontFace: "Arial",
+        align: "right",
+      });
+      return;
+    }
 
     const textColor = styleTemplate === "Creative" ? "FFFFFF" : "1E293B";
     const subtextColor = styleTemplate === "Creative" ? "94A3B8" : "475569";
@@ -1098,16 +2007,27 @@ export async function exportToDocx({
     documentTitle.toLowerCase().includes("contract") ||
     documentTitle.toLowerCase().includes("agreement");
 
+  const isMarketingPlan =
+    !isContract &&
+    (documentType.toLowerCase().includes("marketing") ||
+      documentTitle.toLowerCase().includes("marketing"));
+
   const contractTitle =
     isContract &&
     (documentTitle.toLowerCase().includes("partnership")
       ? "SERVICE AGREEMENT"
       : documentTitle.toUpperCase());
 
+  const planTitle =
+    isMarketingPlan &&
+    (documentTitle.toLowerCase().includes("plan")
+      ? documentTitle.toUpperCase()
+      : `${(documentTitle || "MARKETING PLAN").toUpperCase()} 2026`);
+
   const docChildren = [
     // Document Title
     new Paragraph({
-      text: isContract ? contractTitle : documentTitle,
+      text: isMarketingPlan ? planTitle : isContract ? contractTitle : documentTitle,
       heading: HeadingLevel.HEADING_1,
       spacing: { after: 120 },
       style: { run: { color: primaryHex, bold: true, size: 40 } },
@@ -1117,9 +2037,11 @@ export async function exportToDocx({
     new Paragraph({
       children: [
         new TextRun({
-          text: isContract
-            ? `CONTRACT  ·  ${companyProfile.companyName || "SolarTech Nigeria"}`
-            : `${documentType.toUpperCase()}  ·  ${companyProfile.companyName || "Ahiia"}  ·  ${styleTemplate} Style`,
+          text: isMarketingPlan
+            ? `MARKETING PLAN  ·  ${companyProfile.companyName || "SolarTech Nigeria"}  ·  ${styleTemplate} Layout`
+            : isContract
+              ? `CONTRACT  ·  ${companyProfile.companyName || "SolarTech Nigeria"}`
+              : `${documentType.toUpperCase()}  ·  ${companyProfile.companyName || "Ahiia"}  ·  ${styleTemplate} Style`,
           bold: true,
           color: accentHex,
           size: 20,
@@ -1132,9 +2054,11 @@ export async function exportToDocx({
     new Paragraph({
       children: [
         new TextRun({
-          text: isContract
-            ? `Between: ${companyProfile.preparedFor || "Lagos SME Partners Ltd."} ("the Client")   |   And: ${companyProfile.companyName || "SolarTech Nigeria"} ("the Provider")`
-            : `Prepared for: ${companyProfile.preparedFor || "Client"}   |   Date: ${new Date().toLocaleDateString()}`,
+          text: isMarketingPlan
+            ? `Prepared for: ${companyProfile.preparedFor || "Commercial team"}   |   Prepared by: ${companyProfile.preparedBy || companyProfile.companyName || "SolarTech Nigeria"}`
+            : isContract
+              ? `Between: ${companyProfile.preparedFor || "Lagos SME Partners Ltd."} ("the Client")   |   And: ${companyProfile.companyName || "SolarTech Nigeria"} ("the Provider")`
+              : `Prepared for: ${companyProfile.preparedFor || "Client"}   |   Date: ${new Date().toLocaleDateString()}`,
           color: "64748B",
           size: 18,
         }),
@@ -1146,12 +2070,24 @@ export async function exportToDocx({
   // Process sections
   sections.forEach((sec, idx) => {
     // Section Header
+    const displayDocxTitle = isContract
+      ? `${idx + 1}. ${sec.title}`
+      : isMarketingPlan
+        ? sec.title
+        : `${idx + 1}. ${sec.title}`;
+
     docChildren.push(
       new Paragraph({
-        text: `${idx + 1}. ${sec.title}`,
+        text: displayDocxTitle,
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 280, after: 120 },
-        style: { run: { color: primaryHex, bold: true, size: 26 } },
+        style: {
+          run: {
+            color: (isContract || isMarketingPlan) && styleTemplate === "Creative" ? accentHex : primaryHex,
+            bold: true,
+            size: 26,
+          },
+        },
       })
     );
 
@@ -1195,13 +2131,29 @@ export async function exportToDocx({
     if (Array.isArray(sec.bullets)) {
       sec.bullets.forEach((b) => {
         if (!b) return;
-        docChildren.push(
-          new Paragraph({
-            text: b,
-            bullet: { level: 0 },
-            spacing: { after: 80 },
-          })
-        );
+        if ((isContract || isMarketingPlan) && styleTemplate === "Minimal") {
+          docChildren.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `—  ${b}`,
+                  color: "334155",
+                  size: 22,
+                }),
+              ],
+              spacing: { after: 100 },
+              indent: { left: 360 },
+            })
+          );
+        } else {
+          docChildren.push(
+            new Paragraph({
+              text: b,
+              bullet: { level: 0 },
+              spacing: { after: 80 },
+            })
+          );
+        }
       });
     }
 
@@ -1235,18 +2187,49 @@ export async function exportToDocx({
           new TableRow({
             children: [
               new TableCell({
-                width: { size: 30, type: WidthType.PERCENTAGE },
+                width: { size: isContract ? 45 : 30, type: WidthType.PERCENTAGE },
+                borders: isContract
+                  ? {
+                      top: { style: BorderStyle.NONE },
+                      bottom: { style: BorderStyle.SINGLE, size: 1, color: "F1F5F9" },
+                      left: { style: BorderStyle.NONE },
+                      right: { style: BorderStyle.NONE },
+                    }
+                  : undefined,
                 children: [
                   new Paragraph({
-                    children: [new TextRun({ text: r.key, bold: true, color: primaryHex })],
+                    children: [
+                      new TextRun({
+                        text: r.key,
+                        bold: /contract value|total/i.test(r.key) || !isContract,
+                        color: primaryHex,
+                        size: 22,
+                      }),
+                    ],
                   }),
                 ],
               }),
               new TableCell({
-                width: { size: 70, type: WidthType.PERCENTAGE },
+                width: { size: isContract ? 55 : 70, type: WidthType.PERCENTAGE },
+                borders: isContract
+                  ? {
+                      top: { style: BorderStyle.NONE },
+                      bottom: { style: BorderStyle.SINGLE, size: 1, color: "F1F5F9" },
+                      left: { style: BorderStyle.NONE },
+                      right: { style: BorderStyle.NONE },
+                    }
+                  : undefined,
                 children: [
                   new Paragraph({
-                    children: [new TextRun({ text: r.value || "—", color: "334155" })],
+                    alignment: isContract ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    children: [
+                      new TextRun({
+                        text: r.value || "—",
+                        bold: isContract,
+                        color: "0F172A",
+                        size: 22,
+                      }),
+                    ],
                   }),
                 ],
               }),
