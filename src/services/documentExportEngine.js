@@ -118,7 +118,56 @@ export async function exportToPdf({
       const isCover = idx === 0 || sec.isCover;
 
       if (isCover) {
-        if (styleTemplate === "Minimal") {
+        if (styleTemplate === "Creative") {
+          // Creative Cover Slide (Dark Navy Background)
+          doc.setFillColor(16, 24, 63);
+          doc.rect(0, 0, pageWidth, pageHeight, "F");
+
+          // Brand logo badge
+          doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.roundedRect(margin + 5, margin + 6, 16, 16, 3.5, 3.5, "F");
+          doc.setTextColor(255, 255, 255);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(13);
+          doc.text(initials, margin + 13, margin + 17, { align: "center" });
+
+          // Brand name & tagline
+          doc.setFontSize(14);
+          doc.setTextColor(255, 255, 255);
+          doc.text(companyProfile.companyName || "SolarTech Nigeria", margin + 26, margin + 12);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(191, 219, 254);
+          doc.text(brandKit.tagline || "Clean power, built to last", margin + 26, margin + 18);
+
+          // Hero headline
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(27);
+          doc.setTextColor(255, 255, 255);
+          const splitTitle = doc.splitTextToSize(sec.title || documentTitle, contentWidth - 30);
+          doc.text(splitTitle, margin + 5, 85);
+
+          // Subtitle
+          const subY = 85 + splitTitle.length * 10 + 6;
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(14);
+          doc.setTextColor(147, 197, 253);
+          doc.text(sec.subtitle || "Series-A raise • 2026", margin + 5, subY);
+
+          // Bottom vibrant blue accent bar
+          doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.rect(0, pageHeight - 4, pageWidth, 4, "F");
+
+          // Footer
+          doc.setDrawColor(30, 41, 89);
+          doc.setLineWidth(0.3);
+          doc.line(margin + 5, pageHeight - 18, pageWidth - margin, pageHeight - 18);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(191, 219, 254);
+          doc.text(sec.footerNote || "Confidential • Investor presentation", margin + 5, pageHeight - 10);
+          doc.text(`${idx + 1} / ${totalSlides}`, pageWidth - margin, pageHeight - 10, { align: "right" });
+        } else if (styleTemplate === "Minimal") {
           // Minimal Cover Slide
           // Standalone Brand badge
           doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
@@ -208,36 +257,92 @@ export async function exportToPdf({
         }
       } else {
         // Content Slide
-        if (styleTemplate === "Minimal") {
+        if (styleTemplate === "Creative") {
+          // Creative Top Dark Navy Banner
+          doc.setFillColor(16, 24, 63);
+          doc.rect(0, 0, pageWidth, 45, "F");
+
+          // Kicker
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9.5);
+          doc.setTextColor(96, 165, 250);
+          doc.text((sec.kicker || sec.title || "Problem").toUpperCase(), margin, 15);
+
+          // Large Ghost Number
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(22);
+          doc.setTextColor(38, 51, 102);
+          doc.text(String(idx + 1).padStart(2, "0"), margin, 32);
+
+          // Headline
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(18);
+          doc.setTextColor(255, 255, 255);
+          const splitHeadline = doc.splitTextToSize(sec.title || "", contentWidth - 30);
+          doc.text(splitHeadline, margin + 25, 24);
+
+          let contentY = 60;
+
+          // Bullets
+          if (Array.isArray(sec.bullets) && sec.bullets.length > 0) {
+            sec.bullets.forEach((bullet) => {
+              // Vibrant blue bullet dot
+              doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+              doc.circle(margin + 2.5, contentY - 1.2, 1.4, "F");
+
+              doc.setFont("helvetica", "bold");
+              doc.setFontSize(12.5);
+              doc.setTextColor(15, 23, 42);
+              const splitBullet = doc.splitTextToSize(bullet, contentWidth - 12);
+              doc.text(splitBullet, margin + 8, contentY);
+              contentY += splitBullet.length * 7 + 5;
+            });
+          }
+
+          // Solid Vibrant Blue Metric Card (if present on Traction)
+          if (sec.metricValue) {
+            contentY += 2;
+            doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+            doc.roundedRect(margin, contentY, 80, 25, 4, 4, "F");
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(22);
+            doc.setTextColor(255, 255, 255);
+            doc.text(sec.metricValue, margin + 7, contentY + 12);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(219, 234, 254);
+            doc.text(sec.metricLabel || "Metric target", margin + 7, contentY + 19);
+
+            contentY += 32;
+          }
+
+          // Slide Footer
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(100, 116, 139);
+          doc.text(companyProfile.companyName || "SolarTech Nigeria", margin, pageHeight - 10);
+          doc.text(`${idx + 1} / ${totalSlides}`, pageWidth - margin, pageHeight - 10, { align: "right" });
+        } else if (styleTemplate === "Minimal") {
           // Minimal kicker (muted gray, spaced)
           doc.setFont("helvetica", "bold");
           doc.setFontSize(9.5);
           doc.setTextColor(148, 163, 184);
           const kickerText = (sec.kicker || sec.title || "Traction").toUpperCase();
           doc.text(kickerText, margin, margin + 5);
-        } else {
-          // Corporate kicker (blue, with top-right dash)
+
+          // Headline
           doc.setFont("helvetica", "bold");
-          doc.setFontSize(10.5);
-          doc.setTextColor(accentRgb[0], accentRgb[1], accentRgb[2]);
-          doc.text(sec.kicker || sec.title || "Traction", margin, margin + 5);
+          doc.setFontSize(22);
+          doc.setTextColor(11, 21, 54);
+          const splitHeadline = doc.splitTextToSize(sec.title || "", contentWidth);
+          doc.text(splitHeadline, margin, margin + 18);
 
-          doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
-          doc.roundedRect(pageWidth - margin - 16, margin + 3, 16, 1.5, 0.75, 0.75, "F");
-        }
+          let contentY = margin + 18 + splitHeadline.length * 9 + 4;
 
-        // Headline
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(22);
-        doc.setTextColor(11, 21, 54);
-        const splitHeadline = doc.splitTextToSize(sec.title || "", contentWidth);
-        doc.text(splitHeadline, margin, margin + 18);
-
-        let contentY = margin + 18 + splitHeadline.length * 9 + 4;
-
-        // Metric Card (if present)
-        if (sec.metricValue) {
-          if (styleTemplate === "Minimal") {
+          // Metric Card (if present)
+          if (sec.metricValue) {
             doc.setFillColor(255, 255, 255);
             doc.roundedRect(margin, contentY, 65, 22, 4, 4, "F");
             doc.setDrawColor(226, 232, 240);
@@ -253,7 +358,59 @@ export async function exportToPdf({
             doc.setFontSize(8.5);
             doc.setTextColor(100, 116, 139);
             doc.text(sec.metricLabel || "", margin + 5, contentY + 17);
-          } else {
+
+            contentY += 30;
+          }
+
+          // Bullets
+          if (Array.isArray(sec.bullets) && sec.bullets.length > 0) {
+            sec.bullets.forEach((bullet, bIdx) => {
+              doc.setFont("helvetica", "bold");
+              doc.setFontSize(10.5);
+              doc.setTextColor(148, 163, 184);
+              const numStr = String(bIdx + 1).padStart(2, "0");
+              doc.text(numStr, margin, contentY);
+
+              doc.setFont("helvetica", "normal");
+              doc.setFontSize(12);
+              doc.setTextColor(30, 41, 59);
+              const splitBullet = doc.splitTextToSize(bullet, contentWidth - 14);
+              doc.text(splitBullet, margin + 9, contentY);
+              contentY += splitBullet.length * 7 + 4;
+            });
+          }
+
+          // Slide Footer
+          doc.setDrawColor(241, 245, 249);
+          doc.setLineWidth(0.4);
+          doc.line(margin, pageHeight - 16, pageWidth - margin, pageHeight - 16);
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(148, 163, 184);
+          doc.text(companyProfile.companyName || "SolarTech Nigeria", margin, pageHeight - 9);
+          doc.text(`${idx + 1} / ${totalSlides}`, pageWidth - margin, pageHeight - 9, { align: "right" });
+        } else {
+          // Corporate kicker (blue, with top-right dash)
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10.5);
+          doc.setTextColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.text(sec.kicker || sec.title || "Traction", margin, margin + 5);
+
+          doc.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          doc.roundedRect(pageWidth - margin - 16, margin + 3, 16, 1.5, 0.75, 0.75, "F");
+
+          // Headline
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(22);
+          doc.setTextColor(11, 21, 54);
+          const splitHeadline = doc.splitTextToSize(sec.title || "", contentWidth);
+          doc.text(splitHeadline, margin, margin + 18);
+
+          let contentY = margin + 18 + splitHeadline.length * 9 + 4;
+
+          // Metric Card (if present)
+          if (sec.metricValue) {
             doc.setFillColor(239, 244, 255);
             doc.roundedRect(margin, contentY, 65, 22, 4, 4, "F");
             doc.setDrawColor(219, 234, 254);
@@ -269,30 +426,13 @@ export async function exportToPdf({
             doc.setFontSize(8.5);
             doc.setTextColor(71, 85, 105);
             doc.text(sec.metricLabel || "", margin + 5, contentY + 17);
+
+            contentY += 30;
           }
 
-          contentY += 30;
-        }
-
-        // Bullets
-        if (Array.isArray(sec.bullets) && sec.bullets.length > 0) {
-          sec.bullets.forEach((bullet, bIdx) => {
-            if (styleTemplate === "Minimal") {
-              // Numbered prefix 01, 02, 03
-              doc.setFont("helvetica", "bold");
-              doc.setFontSize(10.5);
-              doc.setTextColor(148, 163, 184);
-              const numStr = String(bIdx + 1).padStart(2, "0");
-              doc.text(numStr, margin, contentY);
-
-              doc.setFont("helvetica", "normal");
-              doc.setFontSize(12);
-              doc.setTextColor(30, 41, 59);
-              const splitBullet = doc.splitTextToSize(bullet, contentWidth - 14);
-              doc.text(splitBullet, margin + 9, contentY);
-              contentY += splitBullet.length * 7 + 4;
-            } else {
-              // Solid circle bullet
+          // Bullets
+          if (Array.isArray(sec.bullets) && sec.bullets.length > 0) {
+            sec.bullets.forEach((bullet) => {
               doc.setFillColor(15, 23, 42);
               doc.circle(margin + 2.5, contentY - 1.2, 1.2, "F");
 
@@ -302,32 +442,20 @@ export async function exportToPdf({
               const splitBullet = doc.splitTextToSize(bullet, contentWidth - 12);
               doc.text(splitBullet, margin + 8, contentY);
               contentY += splitBullet.length * 7 + 4;
-            }
-          });
+            });
+          }
+
+          // Slide Footer
+          doc.setDrawColor(241, 245, 249);
+          doc.setLineWidth(0.4);
+          doc.line(margin, pageHeight - 16, pageWidth - margin, pageHeight - 16);
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(148, 163, 184);
+          doc.text(companyProfile.companyName || "SolarTech Nigeria", margin, pageHeight - 9);
+          doc.text(`${idx + 1} / ${totalSlides}`, pageWidth - margin, pageHeight - 9, { align: "right" });
         }
-
-        // Paragraphs if present
-        if (Array.isArray(sec.paragraphs) && sec.paragraphs.length > 0) {
-          sec.paragraphs.forEach((p) => {
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(11);
-            doc.setTextColor(51, 65, 85);
-            const splitP = doc.splitTextToSize(p, contentWidth);
-            doc.text(splitP, margin, contentY);
-            contentY += splitP.length * 6 + 4;
-          });
-        }
-
-        // Slide Footer
-        doc.setDrawColor(241, 245, 249);
-        doc.setLineWidth(0.4);
-        doc.line(margin, pageHeight - 16, pageWidth - margin, pageHeight - 16);
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(148, 163, 184);
-        doc.text(companyProfile.companyName || "SolarTech Nigeria", margin, pageHeight - 9);
-        doc.text(`${idx + 1} / ${totalSlides}`, pageWidth - margin, pageHeight - 9, { align: "right" });
       }
     });
 
@@ -1406,57 +1534,48 @@ export async function exportToPptx({
   const coverSlide = pres.addSlide();
 
   if (isPitchDeck) {
-    coverSlide.background = { color: "FFFFFF" };
-    if (styleTemplate !== "Minimal") {
-      // Left brand blue vertical accent bar
-      coverSlide.addShape(pres.ShapeType.rect, {
-        x: 0,
-        y: 0,
-        w: 0.25,
-        h: "100%",
+    if (styleTemplate === "Creative") {
+      // Creative pitch deck: Midnight navy background #10183F
+      coverSlide.background = { color: "10183F" };
+
+      const initials = (companyProfile.companyName || "SolarTech")
+        .split(" ")
+        .filter(Boolean)
+        .map((w) => w[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase();
+
+      // Brand badge in solid vibrant blue
+      coverSlide.addShape(pres.ShapeType.roundRect, {
+        x: 1.0,
+        y: 0.8,
+        w: 0.8,
+        h: 0.8,
         fill: { color: accentHex },
+        rectRadius: 0.15,
       });
-    }
+      coverSlide.addText(initials, {
+        x: 1.0,
+        y: 0.8,
+        w: 0.8,
+        h: 0.8,
+        fontSize: 16,
+        bold: true,
+        color: "FFFFFF",
+        align: "center",
+        valign: "middle",
+        fontFace: "Arial",
+      });
 
-    const initials = (companyProfile.companyName || "SolarTech")
-      .split(" ")
-      .filter(Boolean)
-      .map((w) => w[0])
-      .join("")
-      .substring(0, 2)
-      .toUpperCase();
-
-    // Badge
-    coverSlide.addShape(pres.ShapeType.roundRect, {
-      x: 1.0,
-      y: 0.8,
-      w: 0.8,
-      h: 0.8,
-      fill: { color: accentHex },
-      rectRadius: 0.15,
-    });
-    coverSlide.addText(initials, {
-      x: 1.0,
-      y: 0.8,
-      w: 0.8,
-      h: 0.8,
-      fontSize: 16,
-      bold: true,
-      color: "FFFFFF",
-      align: "center",
-      valign: "middle",
-      fontFace: "Arial",
-    });
-
-    if (styleTemplate !== "Minimal") {
-      // Company & Tagline beside badge in Corporate
+      // Company & Tagline beside badge
       coverSlide.addText(companyProfile.companyName || "SolarTech Nigeria", {
         x: 2.0,
         y: 0.8,
         w: 7.0,
         fontSize: 14,
         bold: true,
-        color: "0F172A",
+        color: "FFFFFF",
         fontFace: "Arial",
       });
       coverSlide.addText(brandKit.tagline || "Clean power, built to last", {
@@ -1464,76 +1583,190 @@ export async function exportToPptx({
         y: 1.15,
         w: 7.0,
         fontSize: 10,
-        color: "64748B",
+        color: "93C5FD",
         fontFace: "Arial",
       });
-    }
 
-    // Hero title
-    coverSlide.addText(documentTitle || "Powering Nigerian business without the grid", {
-      x: 1.0,
-      y: 2.6,
-      w: 10.5,
-      fontSize: 34,
-      bold: true,
-      color: "0B1536",
-      fontFace: "Arial",
-      lineSpacing: 40,
-    });
-
-    if (styleTemplate !== "Minimal") {
-      // Accent line
-      coverSlide.addShape(pres.ShapeType.roundRect, {
+      // Hero title (white)
+      coverSlide.addText(documentTitle || "Powering Nigerian business without the grid", {
         x: 1.0,
-        y: 4.4,
-        w: 1.2,
-        h: 0.08,
-        fill: { color: accentHex },
-        rectRadius: 0.04,
+        y: 2.6,
+        w: 10.5,
+        fontSize: 34,
+        bold: true,
+        color: "FFFFFF",
+        fontFace: "Arial",
+        lineSpacing: 40,
       });
-    }
 
-    // Subtitle
-    coverSlide.addText(sections[0]?.subtitle || "Series-A raise • 2026", {
-      x: 1.0,
-      y: styleTemplate === "Minimal" ? 4.2 : 4.8,
-      w: 9.0,
-      fontSize: 16,
-      bold: styleTemplate !== "Minimal",
-      color: styleTemplate === "Minimal" ? "475569" : "0B1536",
-      fontFace: "Arial",
-    });
+      // Subtitle (light blue)
+      coverSlide.addText(sections[0]?.subtitle || "Series-A raise • 2026", {
+        x: 1.0,
+        y: 4.8,
+        w: 9.0,
+        fontSize: 16,
+        bold: true,
+        color: "93C5FD",
+        fontFace: "Arial",
+      });
 
-    // Footer
-    coverSlide.addShape(pres.ShapeType.line, {
-      x: 1.0,
-      y: 6.6,
-      w: 11.3,
-      h: 0,
-      line: { color: "E2E8F0", width: 1 },
-    });
-    coverSlide.addText(
-      styleTemplate === "Minimal"
-        ? `${companyProfile.companyName || "SolarTech Nigeria"} • ${brandKit.tagline || "Clean power, built to last"}`
-        : "Confidential • Investor presentation",
-      {
+      // Bottom blue accent bar
+      coverSlide.addShape(pres.ShapeType.rect, {
+        x: 0,
+        y: 6.4,
+        w: "100%",
+        h: 0.1,
+        fill: { color: accentHex },
+      });
+
+      // Footer
+      coverSlide.addText("Confidential • Investor presentation", {
         x: 1.0,
         y: 6.75,
         w: 8.0,
         fontSize: 10,
+        color: "64748B",
+        fontFace: "Arial",
+      });
+      coverSlide.addText(`1 / ${Math.max(1, sections.length)}`, {
+        x: 10.3,
+        y: 6.75,
+        w: 2.0,
+        fontSize: 10,
+        color: "64748B",
+        fontFace: "Arial",
+        align: "right",
+      });
+    } else {
+      coverSlide.background = { color: "FFFFFF" };
+      if (styleTemplate !== "Minimal") {
+        // Left brand blue vertical accent bar
+        coverSlide.addShape(pres.ShapeType.rect, {
+          x: 0,
+          y: 0,
+          w: 0.25,
+          h: "100%",
+          fill: { color: accentHex },
+        });
+      }
+
+      const initials = (companyProfile.companyName || "SolarTech")
+        .split(" ")
+        .filter(Boolean)
+        .map((w) => w[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase();
+
+      // Badge
+      coverSlide.addShape(pres.ShapeType.roundRect, {
+        x: 1.0,
+        y: 0.8,
+        w: 0.8,
+        h: 0.8,
+        fill: { color: accentHex },
+        rectRadius: 0.15,
+      });
+      coverSlide.addText(initials, {
+        x: 1.0,
+        y: 0.8,
+        w: 0.8,
+        h: 0.8,
+        fontSize: 16,
+        bold: true,
+        color: "FFFFFF",
+        align: "center",
+        valign: "middle",
+        fontFace: "Arial",
+      });
+
+      if (styleTemplate !== "Minimal") {
+        // Company & Tagline beside badge in Corporate
+        coverSlide.addText(companyProfile.companyName || "SolarTech Nigeria", {
+          x: 2.0,
+          y: 0.8,
+          w: 7.0,
+          fontSize: 14,
+          bold: true,
+          color: "0F172A",
+          fontFace: "Arial",
+        });
+        coverSlide.addText(brandKit.tagline || "Clean power, built to last", {
+          x: 2.0,
+          y: 1.15,
+          w: 7.0,
+          fontSize: 10,
+          color: "64748B",
+          fontFace: "Arial",
+        });
+      }
+
+      // Hero title
+      coverSlide.addText(documentTitle || "Powering Nigerian business without the grid", {
+        x: 1.0,
+        y: 2.6,
+        w: 10.5,
+        fontSize: 34,
+        bold: true,
+        color: "0B1536",
+        fontFace: "Arial",
+        lineSpacing: 40,
+      });
+
+      if (styleTemplate !== "Minimal") {
+        // Accent line
+        coverSlide.addShape(pres.ShapeType.roundRect, {
+          x: 1.0,
+          y: 4.4,
+          w: 1.2,
+          h: 0.08,
+          fill: { color: accentHex },
+          rectRadius: 0.04,
+        });
+      }
+
+      // Subtitle
+      coverSlide.addText(sections[0]?.subtitle || "Series-A raise • 2026", {
+        x: 1.0,
+        y: styleTemplate === "Minimal" ? 4.2 : 4.8,
+        w: 9.0,
+        fontSize: 16,
+        bold: styleTemplate !== "Minimal",
+        color: styleTemplate === "Minimal" ? "475569" : "0B1536",
+        fontFace: "Arial",
+      });
+
+      // Footer
+      coverSlide.addShape(pres.ShapeType.line, {
+        x: 1.0,
+        y: 6.6,
+        w: 11.3,
+        h: 0,
+        line: { color: "E2E8F0", width: 1 },
+      });
+      coverSlide.addText(
+        styleTemplate === "Minimal"
+          ? `${companyProfile.companyName || "SolarTech Nigeria"} • ${brandKit.tagline || "Clean power, built to last"}`
+          : "Confidential • Investor presentation",
+        {
+          x: 1.0,
+          y: 6.75,
+          w: 8.0,
+          fontSize: 10,
+          color: "94A3B8",
+          fontFace: "Arial",
+        }
+      );
+      coverSlide.addText(`1 / ${Math.max(1, sections.length)}`, {
+        x: 10.3,
+        y: 6.75,
+        w: 2.0,
+        fontSize: 10,
         color: "94A3B8",
         fontFace: "Arial",
-      }
-    );
-    coverSlide.addText(`1 / ${Math.max(1, sections.length)}`, {
-      x: 10.3,
-      y: 6.75,
-      w: 2.0,
-      fontSize: 10,
-      color: "94A3B8",
-      fontFace: "Arial",
-      align: "right",
-    });
+        align: "right",
+      });
+    }
   } else if (styleTemplate === "Creative") {
     coverSlide.background = { color: primaryHex };
     // Accent shape
@@ -1656,9 +1889,128 @@ export async function exportToPptx({
   sections.forEach((sec, idx) => {
     if (isPitchDeck && idx === 0 && (sec.isCover || sec.key === "cover")) return;
     const slide = pres.addSlide();
-    slide.background = { color: styleTemplate === "Creative" ? "0F172A" : "FFFFFF" };
+    slide.background = { color: "FFFFFF" };
 
     if (isPitchDeck) {
+      if (styleTemplate === "Creative") {
+        // Creative Top Midnight Navy Banner
+        slide.addShape(pres.ShapeType.rect, {
+          x: 0,
+          y: 0,
+          w: "100%",
+          h: 2.2,
+          fill: { color: "10183F" },
+        });
+
+        // Kicker in sky blue
+        slide.addText(sec.kicker || sec.title || "Traction", {
+          x: 0.8,
+          y: 0.35,
+          w: 2.5,
+          fontSize: 11,
+          bold: true,
+          color: "60A5FA",
+          fontFace: "Arial",
+        });
+
+        // Giant Ghost Slide Number
+        slide.addText(String(idx + 1).padStart(2, "0"), {
+          x: 0.8,
+          y: 0.65,
+          w: 1.8,
+          fontSize: 38,
+          bold: true,
+          color: "263366",
+          fontFace: "Arial",
+        });
+
+        // Hero headline (bold white)
+        slide.addText(sec.title || "", {
+          x: 2.5,
+          y: 0.6,
+          w: 10.2,
+          fontSize: 24,
+          bold: true,
+          color: "FFFFFF",
+          fontFace: "Arial",
+          lineSpacing: 30,
+        });
+
+        let currentY = 2.6;
+
+        // Bullets
+        if (Array.isArray(sec.bullets) && sec.bullets.length > 0) {
+          const bulletItems = sec.bullets.map((b) => ({
+            text: b,
+            options: {
+              bullet: { type: "round", color: accentHex },
+              color: "0F172A",
+              fontSize: 14,
+              bold: true,
+            },
+          }));
+          slide.addText(bulletItems, {
+            x: 0.8,
+            y: currentY,
+            w: 11.5,
+            h: 2.2,
+            fontFace: "Arial",
+            lineSpacing: 28,
+          });
+          currentY += Math.min(2.2, sec.bullets.length * 0.6 + 0.4);
+        }
+
+        // Solid Vibrant Blue Metric Card
+        if (sec.metricValue) {
+          slide.addShape(pres.ShapeType.roundRect, {
+            x: 0.8,
+            y: currentY,
+            w: 4.8,
+            h: 1.3,
+            fill: { color: accentHex },
+            rectRadius: 0.15,
+          });
+          slide.addText(sec.metricValue, {
+            x: 1.0,
+            y: currentY + 0.1,
+            w: 4.4,
+            fontSize: 26,
+            bold: true,
+            color: "FFFFFF",
+            fontFace: "Arial",
+          });
+          slide.addText(sec.metricLabel || "Metric target", {
+            x: 1.0,
+            y: currentY + 0.75,
+            w: 4.4,
+            fontSize: 10,
+            bold: false,
+            color: "DBEAFE",
+            fontFace: "Arial",
+          });
+        }
+
+        // Footer
+        slide.addText(companyProfile.companyName || "SolarTech Nigeria", {
+          x: 0.8,
+          y: 6.85,
+          w: 6.0,
+          fontSize: 10,
+          color: "64748B",
+          fontFace: "Arial",
+        });
+        slide.addText(`${idx + 1} / ${sections.length}`, {
+          x: 10.5,
+          y: 6.85,
+          w: 2.0,
+          fontSize: 10,
+          color: "64748B",
+          fontFace: "Arial",
+          align: "right",
+        });
+        return;
+      }
+
       if (styleTemplate === "Minimal") {
         // Minimal Kicker: Muted gray, spaced, no right dash
         slide.addText((sec.kicker || sec.title || "Traction").toUpperCase(), {
