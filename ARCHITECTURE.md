@@ -786,6 +786,12 @@ graph TD
 - **Decision:** Document content updates via `PUT /api/v1/documents/:id/content` MUST transmit `{ content: { [sectionKey]: "non-empty string" } }` where `content` is a native JSON object (NEVER double-encoded as a string via `JSON.stringify`), and every blueprint section key maps to a non-empty string value (`buildDocumentContentPayload`).
 - **Rationale:** The remote content validator explicitly rejects serialized JSON strings with `"Document content must be a section-keyed JSON object."` and rejects complex/empty nested objects with `"Every document section must have a non-empty string value."`. The backend requires `content` to be a plain JSON object whose keys match blueprint section keys and whose values are non-empty text strings.
 
+### ADR-10: Asynchronous Document Generation & Polling Queue
+- **Decision:** Document generation from `DocumentSetup.jsx` utilizes an asynchronous polling queue (`POST /api/v1/document-generations` with `Idempotency-Key` header and polling `GET /api/v1/document-generations/:id`).
+- **Rationale:** Generation workflows involve complex AI orchestration, company profile ingestion, and brand styling that can exceed single synchronous HTTP request timeouts.
+- **Convention:** The client stores `requestKey`, `payload`, `templateId`, and `job` in `sessionStorage` (`ahiia_pending_generation`). On refresh or navigation return, polling resumes idempotently. The UI displays the exact status string from the backend alongside an indeterminate loader (no fake progress percentages). Cancelling stops client polling via `AbortController` while server-side generation continues in the background. If `/api/v1/document-generations` returns 404 (prior to backend rollout), the client transparently falls back to synchronous `POST /api/v1/documents`.
+
+
 ---
 
 ## 12. Prioritized Implementation Roadmap & Sequencing
@@ -851,3 +857,5 @@ This document is not a historical artifact; it is the **authoritative blueprint 
 | **Oct 25, 2026** | `1.1.0` | Documented persistence layer implementation (`PUT /content`, autosave, dirty state, real AI responses). Removed synthetic `bp_*` generation fallbacks. | Lead Engineer |
 | **Oct 25, 2026** | `2.0.0` | Evolved document into the definitive living source of truth for the entire project. Added comprehensive feature audit matrix, catalog of disconnected endpoints, detailed sequence diagrams, ADRs, risk analysis, and maintenance protocol. | Principal Architect |
 | **Oct 26, 2026** | `2.1.0` | Documented completion of P1 surface wiring (Brand Kit, Account, Security, Notifications, Analytics, Password Recovery). Added ADR-7 (Blueprint SectionKey Normalization) and ADR-8 (Native JSON Payloads). Documented header streamlining and dynamic Overview greeting. | Staff Engineer |
+| **Oct 28, 2026** | `2.2.0` | Upgraded document generation to asynchronous background job queue with polling architecture (ADR-10). Implemented idempotency via requestKey, resume-on-refresh via sessionStorage, non-blocking cancellation, and 404 fallback. | Principal Engineer |
+

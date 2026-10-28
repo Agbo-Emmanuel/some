@@ -2130,13 +2130,18 @@ const DocumentWorkspace = () => {
           <button
             type="button"
             onClick={() => setShowAiAssistant(!showAiAssistant)}
-            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer ${
+            aria-pressed={showAiAssistant}
+            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131B4D] focus-visible:ring-offset-2 active:scale-[0.98] ${
               showAiAssistant
-                ? "bg-[#131B4D] text-white ring-2 ring-[#131B4D]/20 shadow-sm"
-                : "bg-[#131B4D] hover:bg-[#1C2666] text-white active:scale-[0.98]"
+                ? "bg-[#131B4D] border border-[#131B4D] text-white ring-2 ring-[#131B4D]/20 shadow-sm"
+                : "bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 hover:text-slate-900 active:bg-[#131B4D] active:border-[#131B4D] active:text-white"
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
+            <Sparkles
+              className={`w-3.5 h-3.5 transition-colors ${
+                showAiAssistant ? "text-indigo-300" : "text-blue-600"
+              }`}
+            />
             <span>AI Assistant</span>
           </button>
 
@@ -2568,19 +2573,37 @@ const DocumentWorkspace = () => {
                 </span>
               </div>
 
-              {!isPreviewMode && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAiAssistant(true);
-                    setSelectedSectionId(currentSlide?.id || `slide-${safeSlideIndex}`);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                  <span>AI Edit this slide</span>
-                </button>
-              )}
+              {!isPreviewMode && (() => {
+                const currentSlideId = currentSlide?.id || `slide-${safeSlideIndex}`;
+                const isSlideTargeted = showAiAssistant && selectedSectionId === currentSlideId;
+
+                return (
+                  <button
+                    type="button"
+                    aria-pressed={isSlideTargeted}
+                    onClick={() => {
+                      if (isSlideTargeted) {
+                        setSelectedSectionId(null);
+                      } else {
+                        setShowAiAssistant(true);
+                        setSelectedSectionId(currentSlideId);
+                      }
+                    }}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border text-xs font-semibold shadow-2xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131B4D] focus-visible:ring-offset-2 active:scale-[0.98] ${
+                      isSlideTargeted
+                        ? "bg-[#131B4D] border-[#131B4D] text-white ring-2 ring-[#131B4D]/20 shadow-sm"
+                        : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 hover:text-slate-900 active:bg-[#131B4D] active:border-[#131B4D] active:text-white"
+                    }`}
+                  >
+                    <Sparkles
+                      className={`w-3.5 h-3.5 transition-colors ${
+                        isSlideTargeted ? "text-indigo-300" : "text-blue-600"
+                      }`}
+                    />
+                    <span>AI Edit this slide</span>
+                  </button>
+                );
+              })()}
             </div>
 
             {/* 16:9 Presentation Canvas */}
@@ -4007,16 +4030,31 @@ const DocumentWorkspace = () => {
 
                             <button
                               type="button"
+                              aria-pressed={isSelectedForAi && showAiAssistant}
                               onClick={() => {
-                                setSelectedSectionId(section.id);
-                                setShowAiAssistant(true);
-                                toast.info(
-                                  `AI Assistant targeting: ${section.title}`
-                                );
+                                if (isSelectedForAi && showAiAssistant) {
+                                  setSelectedSectionId(null);
+                                } else {
+                                  setSelectedSectionId(section.id);
+                                  setShowAiAssistant(true);
+                                  toast.info(
+                                    `AI Assistant targeting: ${section.title}`
+                                  );
+                                }
                               }}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#131B4D] hover:bg-[#1C2666] text-white text-[11px] font-bold transition-colors shadow-xs cursor-pointer"
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131B4D] focus-visible:ring-offset-2 active:scale-[0.98] ${
+                                isSelectedForAi && showAiAssistant
+                                  ? "bg-[#131B4D] border-[#131B4D] text-white ring-2 ring-[#131B4D]/20 shadow-xs"
+                                  : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 hover:text-slate-900 active:bg-[#131B4D] active:border-[#131B4D] active:text-white"
+                              }`}
                             >
-                              <Sparkles className="w-3 h-3 text-indigo-300" />
+                              <Sparkles
+                                className={`w-3 h-3 transition-colors ${
+                                  isSelectedForAi && showAiAssistant
+                                    ? "text-indigo-300"
+                                    : "text-blue-600"
+                                }`}
+                              />
                               <span>AI Edit</span>
                             </button>
 
@@ -4321,16 +4359,31 @@ const DocumentWorkspace = () => {
                                 </button>
                                 <button
                                   type="button"
+                                  aria-pressed={isSelectedForAi && showAiAssistant}
                                   onClick={() => {
-                                    setSelectedSectionId(section.id);
-                                    setShowAiAssistant(true);
-                                    toast.info(
-                                      `AI Assistant targeting: ${section.title}`
-                                    );
+                                    if (isSelectedForAi && showAiAssistant) {
+                                      setSelectedSectionId(null);
+                                    } else {
+                                      setSelectedSectionId(section.id);
+                                      setShowAiAssistant(true);
+                                      toast.info(
+                                        `AI Assistant targeting: ${section.title}`
+                                      );
+                                    }
                                   }}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#131B4D] hover:bg-[#1C2666] text-white text-[11px] font-bold transition-colors shadow-xs cursor-pointer"
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131B4D] focus-visible:ring-offset-2 active:scale-[0.98] ${
+                                    isSelectedForAi && showAiAssistant
+                                      ? "bg-[#131B4D] border-[#131B4D] text-white ring-2 ring-[#131B4D]/20 shadow-xs"
+                                      : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 hover:text-slate-900 active:bg-[#131B4D] active:border-[#131B4D] active:text-white"
+                                  }`}
                                 >
-                                  <Sparkles className="w-3 h-3 text-indigo-300" />
+                                  <Sparkles
+                                    className={`w-3 h-3 transition-colors ${
+                                      isSelectedForAi && showAiAssistant
+                                        ? "text-indigo-300"
+                                        : "text-blue-600"
+                                    }`}
+                                  />
                                   <span>AI Edit</span>
                                 </button>
                               </div>

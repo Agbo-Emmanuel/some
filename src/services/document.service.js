@@ -306,3 +306,11 @@ export const getBlueprintByType = async (documentType) => {
   return response.data;
 };
 
+// ================= Async Generation =================
+export {
+  startDocumentGeneration,
+  waitForDocumentGeneration,
+  delay,
+} from "./generation.service";
+
+
