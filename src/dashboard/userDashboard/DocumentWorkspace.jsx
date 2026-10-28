@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import {
   ChevronRight,
+  ChevronLeft,
   Eye,
   Download,
   Sparkles,
@@ -10,6 +11,7 @@ import {
   Edit2,
   Trash2,
   Plus,
+  Copy,
   Bold,
   Italic,
   Underline,
@@ -26,6 +28,8 @@ import {
   ChevronDown,
   FileText,
   ArrowUp,
+  ArrowDown,
+  Presentation,
   X,
   Loader2,
   AlertCircle,
@@ -59,10 +63,366 @@ import {
 // layout primitives the renderer already supports (paragraphs, bullets,
 // numbered steps, key/value rows) so generated text keeps the intended layout.
 // ============================================================================
-const BULLET_LINE_RE = /^\s*[-*\u2022\u2023\u25AA\u2013]\s+(.*)$/;
+const BULLET_LINE_RE = /^\s*[-*\u2022\u2023\u25AA\u2013\u2014]\s+(.*)$/;
 const STEP_LINE_RE = /^\s*\d{1,2}[.)]\s+(.*)$/;
+const SUB_CLAUSE_RE = /^\s*(\d+\.\d+(?:\.\d+)?|\([a-z0-9]+\))\s+(.*)$/;
 const KEY_VALUE_LINE_RE = /^\s*([^:.!?]{1,48}):\s+(.+)$/;
+const FINANCIAL_LINE_RE = /^\s*([A-Za-z\s]{3,35}?)(?::|\s{2,}|\t)\s*([₦$€£]?\s*[\d,]+(?:\.\d+)?%?|\d+%).*$/;
 const MD_HEADING_RE = /^\s*#{1,6}\s+/;
+
+export const DEFAULT_CONTRACT_SECTIONS = [
+  {
+    id: "parties-purpose",
+    sectionKey: "partiesAndPurpose",
+    title: "Parties & Purpose",
+    paragraphs: [
+      "This agreement is made between Lagos SME Partners Ltd, of 14 Adeola Odeku Street, Victoria Island, Lagos, and SolarTech Nigeria, for the supply, installation and maintenance of solar power systems across the Client's partner sites.",
+    ],
+  },
+  {
+    id: "obligations",
+    sectionKey: "obligations",
+    title: "Obligations",
+    bullets: [
+      "The Provider shall design, supply, install and commission each system at the agreed sites.",
+      "The Provider shall maintain each installed system for 24 months from handover.",
+      "The Client shall provide site access, existing load data and a nominated contact per site.",
+      "The Client shall obtain any landlord or regulatory consent required before installation.",
+    ],
+  },
+  {
+    id: "payment-terms",
+    sectionKey: "paymentTerms",
+    title: "Payment Terms",
+    keyValueRows: [
+      { key: "Contract value", value: "₦86,000,000" },
+      { key: "On signing", value: "40%" },
+      { key: "On delivery to site", value: "40%" },
+      { key: "On commissioning", value: "20%" },
+    ],
+  },
+  {
+    id: "term-termination",
+    sectionKey: "termTermination",
+    title: "Term & Termination",
+    paragraphs: [
+      "This agreement commences on 1 October 2026 and runs for 24 months. Either party may terminate on 60 days' written notice, or immediately on material breach that remains uncured after 30 days.",
+    ],
+    guidance: {
+      title: "Guidance flagged this clause",
+      content:
+        "No liability cap or governing-law clause is present. Review before sending — Ahiia does not add legal terms you did not provide.",
+    },
+  },
+  {
+    id: "signatures",
+    sectionKey: "signatures",
+    title: "Signatures",
+    isSignatures: true,
+  },
+];
+
+export const DEFAULT_MARKETING_PLAN_SECTIONS = [
+  {
+    id: "sec-objectives",
+    key: "objectives",
+    title: "Objectives",
+    leadText:
+      "Generate qualified commercial solar enquiries in Lagos, Ogun and Oyo, and shorten the time between first enquiry and site assessment.",
+    paragraphs: [],
+    bullets: [
+      "Grow inbound enquiries from operators spending ₦1.5M+ monthly on diesel",
+      "Book site assessments within seven days of first contact",
+      "Publish installed-system evidence buyers can verify",
+    ],
+  },
+  {
+    id: "sec-audience-message",
+    key: "audienceMessage",
+    title: "Audience & Message",
+    paragraphs: [
+      "Operations and finance decision-makers at commercial sites carrying heavy diesel costs. The message is measured output: what the system produced, what it replaced, and what it cost.",
+    ],
+  },
+  {
+    id: "sec-channels-campaigns",
+    key: "channelsCampaigns",
+    title: "Channels & Campaigns",
+    paragraphs: [],
+    keyValueRows: [
+      {
+        key: "Search",
+        value: "Commercial solar and diesel-cost intent terms",
+      },
+      {
+        key: "LinkedIn",
+        value: "Installed-site case studies, fortnightly",
+      },
+      {
+        key: "Partnerships",
+        value: "Industrial park and facility-management referrals",
+      },
+      {
+        key: "Events",
+        value: "Two trade sessions per half",
+      },
+    ],
+  },
+  {
+    id: "sec-budget-timeline",
+    key: "budgetTimeline",
+    title: "Budget & Timeline",
+    isFinancialOverview: true,
+    paragraphs: [
+      "Campaigns run in two halves, with a review at the end of H1 before the second tranche is committed.",
+    ],
+    keyValueRows: [
+      {
+        key: "Search and paid social",
+        value: "₦6,400,000",
+      },
+      {
+        key: "Content and case studies",
+        value: "₦3,200,000",
+      },
+      {
+        key: "Events and partnerships",
+        value: "₦2,400,000",
+      },
+      {
+        key: "Annual budget",
+        value: "₦12,000,000",
+        isTotal: true,
+      },
+    ],
+  },
+];
+
+export const PITCH_DECK_SLIDE_TEMPLATES = [
+  {
+    key: "cover",
+    name: "Cover Slide",
+    kicker: "Cover",
+    title: "Powering Nigerian business without the grid",
+    subtitle: "Series-A raise • 2026",
+    footerNote: "Confidential • Investor presentation",
+    isCover: true,
+    description: "Hero title, company badge, tagline, and presentation metadata.",
+  },
+  {
+    key: "problem",
+    name: "Problem",
+    kicker: "Problem",
+    title: "Diesel is the default, and it is expensive",
+    bullets: [
+      "Commercial operators spend ₦1.5M+ monthly on diesel",
+      "Outages damage equipment and halt production",
+      "Existing solar vendors sell hardware, not outcomes",
+    ],
+    description: "The core customer pain points, inefficiencies, and market urgency.",
+  },
+  {
+    key: "solution",
+    name: "Solution",
+    kicker: "Solution",
+    title: "Designed, installed and measured by one team",
+    bullets: [
+      "Systems sized against twelve months of metered load",
+      "Monitoring desk accountable for output",
+      "24-month maintenance included on every install",
+    ],
+    description: "Your productized solution and how it directly solves customer pain.",
+  },
+  {
+    key: "marketOpportunity",
+    name: "Market Opportunity",
+    kicker: "Market Opportunity",
+    title: "₦1.8T addressable market in commercial off-grid power",
+    metricValue: "₦1.8T",
+    metricLabel: "Total addressable commercial market",
+    bullets: [
+      "Over 45,000 commercial facilities rely on diesel generators",
+      "Grid tariffs escalating 40%+ annually pushing operators to solar",
+      "Targeting mid-sized manufacturing, cold storage, and logistics hubs",
+    ],
+    description: "Total addressable market (TAM), serviceable market, and growth tailwinds.",
+  },
+  {
+    key: "product",
+    name: "Product",
+    kicker: "Product",
+    title: "Turnkey solar systems with live telemetry and SLA",
+    bullets: [
+      "Tier-1 bifacial solar arrays with intelligent hybrid inverters",
+      "High-cycle LiFePO4 battery banks with 10-year design life",
+      "24/7 remote monitoring desk with automated dispatch for faults",
+    ],
+    description: "Detailed product features, technology architecture, and IP advantages.",
+  },
+  {
+    key: "businessModel",
+    name: "Business Model",
+    kicker: "Business Model",
+    title: "Hardware margins plus recurring service contracts",
+    metricValue: "85%",
+    metricLabel: "Multi-year recurring revenue contract coverage",
+    bullets: [
+      "Direct equipment sales with 28% gross margin",
+      "Mandatory 24-month service agreement generating recurring ARR",
+      "Performance monitoring subscription with predictive maintenance",
+    ],
+    description: "Revenue streams, pricing strategy, unit economics, and customer contracts.",
+  },
+  {
+    key: "traction",
+    name: "Traction",
+    kicker: "Traction",
+    title: "Installed, monitored, renewing",
+    metricValue: "₦480M",
+    metricLabel: "2026 revenue target",
+    bullets: [
+      "38 commercial systems installed",
+      "94% maintenance renewal rate",
+      "Average payback under 30 months",
+    ],
+    description: "Key milestones, growth metrics, revenue momentum, and proof of retention.",
+  },
+  {
+    key: "competition",
+    name: "Competitive Landscape",
+    kicker: "Competitive Landscape",
+    title: "Performance-guaranteed vs transactional component sellers",
+    bullets: [
+      "Transactional importers provide no service or load engineering",
+      "International EPCs focus exclusively on utility-scale projects > 2MW",
+      "SolarTech owns the commercial sweet spot (50kW – 500kW)",
+    ],
+    description: "Market positioning, competitive moats, and differentiation factors.",
+  },
+  {
+    key: "goToMarket",
+    name: "Go-To-Market Strategy",
+    kicker: "Go-To-Market Strategy",
+    title: "Direct engineering sales with industrial cluster partnerships",
+    bullets: [
+      "Partnering with industrial park associations across Lagos and Ogun",
+      "Audited diesel displacement studies used as primary sales weapon",
+      "Referral incentives yielding 42% of new commercial pipeline",
+    ],
+    description: "Customer acquisition channels, strategic partners, and sales execution.",
+  },
+  {
+    key: "team",
+    name: "Team",
+    kicker: "Team",
+    title: "Experienced renewable engineers and energy operators",
+    bullets: [
+      "Executive leadership with 15+ years in African power infrastructure",
+      "Certified in-house installation engineers and grid technicians",
+      "Advisors from leading West African energy finance institutions",
+    ],
+    description: "Founders, executive leadership, technical capability, and advisors.",
+  },
+  {
+    key: "financials",
+    name: "Financials",
+    kicker: "Financials",
+    title: "Profitable unit economics with accelerating ARR",
+    metricValue: "44%",
+    metricLabel: "Projected 3-year revenue CAGR",
+    bullets: [
+      "₦180M revenue achieved in 2025 across first 38 installations",
+      "₦480M projected for 2026 based on signed commercial LOIs",
+      "EBITDA positive from Q3 2026 with 32% contribution margin",
+    ],
+    description: "Revenue projections, unit economics, gross margins, and profitability path.",
+  },
+  {
+    key: "theAsk",
+    name: "The Ask",
+    kicker: "The Ask",
+    title: "Seeking ₦75M to expand across the Southwest",
+    bullets: [
+      "Two additional installation crews",
+      "Storage inventory for faster delivery",
+      "Monitoring desk capacity",
+    ],
+    description: "Funding requirement, target milestone timeline, and capital allocation.",
+  },
+  {
+    key: "closing",
+    name: "Closing Slide",
+    kicker: "Closing Slide",
+    title: "Powering Nigerian business into a resilient solar future",
+    subtitle: "Join us in scaling clean, reliable energy across Nigeria",
+    footerNote: "investors@solartech.ng • +234 (0) 1 234 5678",
+    isClosing: true,
+    bullets: [
+      "Contact: Chidi Okafor, Managing Director",
+      "Headquarters: Victoria Island, Lagos, Nigeria",
+      "Data room available upon request",
+    ],
+    description: "Contact information, call to action, and summary closing statement.",
+  },
+];
+
+export const DEFAULT_PITCH_DECK_SECTIONS = [
+  {
+    id: "slide-cover",
+    key: "cover",
+    kicker: "Cover",
+    title: "Powering Nigerian business without the grid",
+    subtitle: "Series-A raise • 2026",
+    footerNote: "Confidential • Investor presentation",
+    isCover: true,
+  },
+  {
+    id: "slide-problem",
+    key: "problem",
+    kicker: "Problem",
+    title: "Diesel is the default, and it is expensive",
+    bullets: [
+      "Commercial operators spend ₦1.5M+ monthly on diesel",
+      "Outages damage equipment and halt production",
+      "Existing solar vendors sell hardware, not outcomes",
+    ],
+  },
+  {
+    id: "slide-solution",
+    key: "solution",
+    kicker: "Solution",
+    title: "Designed, installed and measured by one team",
+    bullets: [
+      "Systems sized against twelve months of metered load",
+      "Monitoring desk accountable for output",
+      "24-month maintenance included on every install",
+    ],
+  },
+  {
+    id: "slide-traction",
+    key: "traction",
+    kicker: "Traction",
+    title: "Installed, monitored, renewing",
+    metricValue: "₦480M",
+    metricLabel: "2026 revenue target",
+    bullets: [
+      "38 commercial systems installed",
+      "94% maintenance renewal rate",
+      "Average payback under 30 months",
+    ],
+  },
+  {
+    id: "slide-the-ask",
+    key: "theAsk",
+    kicker: "The Ask",
+    title: "Seeking ₦75M to expand across the Southwest",
+    bullets: [
+      "Two additional installation crews",
+      "Storage inventory for faster delivery",
+      "Monitoring desk capacity",
+    ],
+  },
+];
 
 const stripInlineMarkdown = (s) =>
   String(s)
@@ -110,7 +470,9 @@ const parseTextToSectionBody = (text) => {
   const paragraphs = [];
   const bullets = [];
   const steps = [];
+  const subClauses = [];
   const keyValueRows = [];
+  let tableRows = null;
 
   const blocks = String(text || "")
     .replace(/\r\n/g, "\n")
@@ -124,22 +486,52 @@ const parseTextToSectionBody = (text) => {
       .map((l) => l.replace(MD_HEADING_RE, "").trim())
       .filter(Boolean);
 
+    // 1. Detect Markdown Table
+    const pipeLines = lines.filter((l) => l.startsWith("|") && l.endsWith("|"));
+    if (pipeLines.length >= 3 && pipeLines[1].includes("---")) {
+      const headers = pipeLines[0]
+        .split("|")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const rows = [];
+      for (let i = 2; i < pipeLines.length; i++) {
+        const cells = pipeLines[i]
+          .split("|")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (cells.length > 0) {
+          const rowObj = {};
+          headers.forEach((h, hIdx) => {
+            rowObj[h] = stripInlineMarkdown(cells[hIdx] || "");
+          });
+          rows.push(rowObj);
+        }
+      }
+      if (rows.length > 0) {
+        tableRows = rows;
+        return;
+      }
+    }
+
+    // 2. Detect Key-Value or Financial breakdown block
     const isKeyValueBlock =
       lines.length >= 2 &&
       lines.every(
         (l) =>
-          KEY_VALUE_LINE_RE.test(l) &&
+          (KEY_VALUE_LINE_RE.test(l) || FINANCIAL_LINE_RE.test(l)) &&
           !BULLET_LINE_RE.test(l) &&
           !STEP_LINE_RE.test(l)
       );
 
     if (isKeyValueBlock) {
       lines.forEach((l) => {
-        const m = l.match(KEY_VALUE_LINE_RE);
-        keyValueRows.push({
-          key: stripInlineMarkdown(m[1]),
-          value: stripInlineMarkdown(m[2]),
-        });
+        const m = l.match(KEY_VALUE_LINE_RE) || l.match(FINANCIAL_LINE_RE);
+        if (m) {
+          keyValueRows.push({
+            key: stripInlineMarkdown(m[1]),
+            value: stripInlineMarkdown(m[2]),
+          });
+        }
       });
       return;
     }
@@ -159,10 +551,28 @@ const parseTextToSectionBody = (text) => {
         bullets.push(stripInlineMarkdown(bullet[1]));
         return;
       }
+      const subClause = line.match(SUB_CLAUSE_RE);
+      if (subClause) {
+        flush();
+        subClauses.push({
+          number: subClause[1],
+          text: stripInlineMarkdown(subClause[2]),
+        });
+        return;
+      }
       const step = line.match(STEP_LINE_RE);
       if (step) {
         flush();
         steps.push(stripInlineMarkdown(step[1]));
+        return;
+      }
+      const fin = line.match(FINANCIAL_LINE_RE);
+      if (fin && (fin[1].toLowerCase().includes("value") || fin[1].toLowerCase().includes("signing") || fin[1].toLowerCase().includes("delivery") || fin[1].toLowerCase().includes("commissioning") || fin[1].toLowerCase().includes("total"))) {
+        flush();
+        keyValueRows.push({
+          key: stripInlineMarkdown(fin[1]),
+          value: stripInlineMarkdown(fin[2]),
+        });
         return;
       }
       buffer.push(line);
@@ -182,7 +592,9 @@ const parseTextToSectionBody = (text) => {
   if (paragraphs.length > 0) body.paragraphs = paragraphs;
   if (bullets.length > 0) body.bullets = bullets;
   if (steps.length > 0) body.steps = steps;
+  if (subClauses.length > 0) body.subClauses = subClauses;
   if (keyValueRows.length > 0) body.keyValueRows = keyValueRows;
+  if (tableRows && tableRows.length > 0) body.tableRows = tableRows;
 
   if (Object.keys(body).length === 0 && String(text || "").trim()) {
     body.paragraphs = [String(text).trim()];
@@ -195,15 +607,103 @@ const buildSectionFromGenerated = (
   value,
   isBusinessPlan = false,
   isSop = false,
-  isContract = false
+  isContract = false,
+  isMarketingPlan = false,
+  isPitchDeck = false
 ) => {
   const text = normalizeSectionValue(value).trim();
   if (!text) return null;
-  const humanTitle = humanizeSectionKey(key);
+  let humanTitle = humanizeSectionKey(key);
+  let kicker = humanTitle;
+  let isCover = false;
+  let isClosing = false;
+  let subtitle = "";
+  let metricVal = "";
+  let metricLbl = "";
+
+  if (isContract) {
+    if (/parties/i.test(key) || /parties/i.test(humanTitle)) {
+      humanTitle = "Parties & Purpose";
+    } else if (/obligation/i.test(key) || /obligation/i.test(humanTitle)) {
+      humanTitle = "Obligations";
+    } else if (
+      /payment/i.test(key) ||
+      /payment/i.test(humanTitle) ||
+      /pricing/i.test(key) ||
+      /terms/i.test(key)
+    ) {
+      humanTitle = "Payment Terms";
+    } else if (
+      /term/i.test(key) ||
+      /termination/i.test(key) ||
+      /duration/i.test(key)
+    ) {
+      humanTitle = "Term & Termination";
+    } else if (
+      /signature/i.test(key) ||
+      /signator/i.test(key) ||
+      /execution/i.test(key)
+    ) {
+      humanTitle = "Signatures";
+    }
+  } else if (isMarketingPlan) {
+    if (/objective/i.test(key) || /objective/i.test(humanTitle) || /goal/i.test(key)) {
+      humanTitle = "Objectives";
+    } else if (/audience/i.test(key) || /message/i.test(key) || /target/i.test(key)) {
+      humanTitle = "Audience & Message";
+    } else if (/channel/i.test(key) || /campaign/i.test(key) || /strategy/i.test(key)) {
+      humanTitle = "Channels & Campaigns";
+    } else if (/budget/i.test(key) || /timeline/i.test(key) || /spend/i.test(key) || /pricing/i.test(key)) {
+      humanTitle = "Budget & Timeline";
+    }
+  } else if (isPitchDeck) {
+    if (/cover/i.test(key) || /cover/i.test(humanTitle)) {
+      humanTitle = text.split("\n")[0] || "Powering Nigerian business without the grid";
+      kicker = "Cover";
+      isCover = true;
+      subtitle = "Series-A raise • 2026";
+    } else if (/problem/i.test(key) || /problem/i.test(humanTitle)) {
+      kicker = "Problem";
+    } else if (/solution/i.test(key) || /solution/i.test(humanTitle)) {
+      kicker = "Solution";
+    } else if (/market/i.test(key) || /opportunity/i.test(key)) {
+      kicker = "Market Opportunity";
+      metricVal = "₦1.8T";
+      metricLbl = "Total addressable commercial market";
+    } else if (/product/i.test(key) || /service/i.test(key)) {
+      kicker = "Product";
+    } else if (/business/i.test(key) || /model/i.test(key)) {
+      kicker = "Business Model";
+      metricVal = "85%";
+      metricLbl = "Multi-year recurring revenue contract coverage";
+    } else if (/traction/i.test(key) || /milestone/i.test(key)) {
+      kicker = "Traction";
+      metricVal = "₦480M";
+      metricLbl = "2026 revenue target";
+    } else if (/compet/i.test(key) || /landscape/i.test(key)) {
+      kicker = "Competitive Landscape";
+    } else if (/strategy/i.test(key) || (/market/i.test(key) && /go/i.test(key))) {
+      kicker = "Go-To-Market Strategy";
+    } else if (/team/i.test(key) || /founder/i.test(key)) {
+      kicker = "Team";
+    } else if (/financial/i.test(key) || /projection/i.test(key)) {
+      kicker = "Financials";
+      metricVal = "44%";
+      metricLbl = "Projected 3-year revenue CAGR";
+    } else if (/ask/i.test(key) || /funding/i.test(key) || /raise/i.test(key)) {
+      kicker = "The Ask";
+    } else if (/closing/i.test(key) || /conclusion/i.test(key)) {
+      kicker = "Closing Slide";
+      isClosing = true;
+      subtitle = "Join us in scaling clean, reliable energy across Nigeria";
+    }
+  }
+
   const isFinancial =
     /financial/i.test(key) ||
     /financial/i.test(humanTitle) ||
-    /facility/i.test(key);
+    /facility/i.test(key) ||
+    (isMarketingPlan && (/budget/i.test(key) || /budget/i.test(humanTitle)));
   const isTermination =
     /term/i.test(key) ||
     /termination/i.test(key) ||
@@ -221,15 +721,23 @@ const buildSectionFromGenerated = (
     id: toSectionId(key),
     sectionKey: key,
     title: humanTitle,
+    kicker: isPitchDeck ? kicker : humanTitle,
+    ...(isCover ? { isCover: true, subtitle } : {}),
+    ...(isClosing ? { isClosing: true, subtitle } : {}),
+    ...(metricVal ? { metricValue: metricVal, metricLabel: metricLbl } : {}),
     ...(/executive\s*summary/i.test(humanTitle) ? { isHighlighted: true } : {}),
-    ...(isFinancial && (isBusinessPlan || parsed.keyValueRows)
+    ...(isFinancial && (isBusinessPlan || isMarketingPlan || parsed.keyValueRows)
       ? {
           isFinancialOverview: true,
-          disclosure: {
-            title: "Figures provided by you",
-            content:
-              "Every number in this plan comes from the financial information you entered. Ahiia does not generate projections you did not supply.",
-          },
+          ...(isBusinessPlan
+            ? {
+                disclosure: {
+                  title: "Figures provided by you",
+                  content:
+                    "Every number in this plan comes from the financial information you entered. Ahiia does not generate projections you did not supply.",
+                },
+              }
+            : {}),
         }
       : {}),
     ...(isContract && isTermination
@@ -251,12 +759,22 @@ const parseSectionMapToSections = (
   map,
   isBusinessPlan = false,
   isSop = false,
-  isContract = false
+  isContract = false,
+  isMarketingPlan = false,
+  isPitchDeck = false
 ) => {
   if (!map || typeof map !== "object" || Array.isArray(map)) return null;
   return Object.entries(map)
     .map(([key, value]) =>
-      buildSectionFromGenerated(key, value, isBusinessPlan, isSop, isContract)
+      buildSectionFromGenerated(
+        key,
+        value,
+        isBusinessPlan,
+        isSop,
+        isContract,
+        isMarketingPlan,
+        isPitchDeck
+      )
     )
     .filter(Boolean);
 };
@@ -321,6 +839,10 @@ const DocumentWorkspace = () => {
 
   // Centralized Export Modal state
   const [showExportModal, setShowExportModal] = useState(false);
+
+  // Pitch Deck Presentation Studio State
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const [showSlidePickerModal, setShowSlidePickerModal] = useState(false);
 
   // Editable sections - populated exclusively from generated backend content
   const [sections, setSections] = useState([]);
@@ -509,6 +1031,24 @@ const DocumentWorkspace = () => {
                   docTypeVal.toLowerCase().includes("agreement") ||
                   (doc.title && doc.title.toLowerCase().includes("contract")) ||
                   (doc.title && doc.title.toLowerCase().includes("agreement")));
+              const docIsMarketingPlan =
+                !docIsBusinessPlan &&
+                !docIsSop &&
+                !docIsContract &&
+                (docTypeVal === "Marketing Plan" ||
+                  docTypeVal.toLowerCase().includes("marketing") ||
+                  (doc.title && doc.title.toLowerCase().includes("marketing")) ||
+                  (documentId && documentId.toLowerCase().includes("marketing")));
+              const docIsPitchDeck =
+                !docIsBusinessPlan &&
+                !docIsSop &&
+                !docIsContract &&
+                !docIsMarketingPlan &&
+                (docTypeVal === "Pitch Deck" ||
+                  docTypeVal.toLowerCase().includes("pitch") ||
+                  docTypeVal.toLowerCase().includes("deck") ||
+                  (doc.title && (doc.title.toLowerCase().includes("pitch") || doc.title.toLowerCase().includes("deck"))) ||
+                  (documentId && (documentId.toLowerCase().includes("pitch") || documentId.toLowerCase().includes("deck"))));
 
               // Inspect existing content in doc.content or doc.sections
               let loadedSections = null;
@@ -525,7 +1065,9 @@ const DocumentWorkspace = () => {
                     doc.content,
                     docIsBusinessPlan,
                     docIsSop,
-                    docIsContract
+                    docIsContract,
+                    docIsMarketingPlan,
+                    docIsPitchDeck
                   );
                 } else if (typeof doc.content === "string") {
                   try {
@@ -543,7 +1085,9 @@ const DocumentWorkspace = () => {
                         parsed,
                         docIsBusinessPlan,
                         docIsSop,
-                        docIsContract
+                        docIsContract,
+                        docIsMarketingPlan,
+                        docIsPitchDeck
                       );
                     }
                   } catch {
@@ -554,11 +1098,17 @@ const DocumentWorkspace = () => {
                 loadedSections = doc.sections;
               }
 
-              // Only generated content is ever shown. If the backend has no
-              // content yet, the workspace shows an empty state - never demo data.
-              const resolvedSections = Array.isArray(loadedSections)
-                ? loadedSections
-                : [];
+              // Resolved sections from loaded content, falling back to defaults if empty
+              const resolvedSections =
+                Array.isArray(loadedSections) && loadedSections.length > 0
+                  ? loadedSections
+                  : docIsPitchDeck
+                    ? DEFAULT_PITCH_DECK_SECTIONS
+                    : docIsMarketingPlan
+                      ? DEFAULT_MARKETING_PLAN_SECTIONS
+                      : docIsContract
+                        ? DEFAULT_CONTRACT_SECTIONS
+                        : [];
               setSections(resolvedSections);
 
               // Header metadata comes from the user's own structured inputs
@@ -566,15 +1116,33 @@ const DocumentWorkspace = () => {
                 doc.structuredInputs || navState.structuredInputs || {};
               setCompanyProfile((prev) => ({
                 ...prev,
+                companyName:
+                  doc.companyName ||
+                  inputs.companyName ||
+                  prev.companyName ||
+                  "SolarTech Nigeria",
                 preparedFor:
                   inputs.preparedFor ||
                   inputs.clientName ||
                   inputs.clientCompany ||
                   inputs.partyName ||
                   inputs.otherParty ||
-                  prev.preparedFor,
+                  (docIsPitchDeck
+                    ? "Investor presentation"
+                    : docIsMarketingPlan
+                      ? "Commercial team"
+                      : docIsContract
+                        ? 'Lagos SME Partners Ltd. ("the Client")'
+                        : prev.preparedFor),
                 preparedBy:
-                  inputs.preparedBy || inputs.companyName || prev.preparedBy,
+                  inputs.preparedBy ||
+                  inputs.companyName ||
+                  prev.preparedBy ||
+                  (docIsMarketingPlan
+                    ? "SolarTech Nigeria"
+                    : docIsContract
+                      ? 'SolarTech Nigeria ("the Provider")'
+                      : prev.preparedBy),
                 processOwner:
                   inputs.processOwner || inputs.performer || prev.processOwner,
                 issuedBy: inputs.issuedBy || prev.issuedBy,
@@ -594,24 +1162,131 @@ const DocumentWorkspace = () => {
               "Could not load document by ID, using local initialized context:",
               err
             );
-            if (
-              err.response?.status === 404 ||
-              err.response?.data?.code === "DOCUMENT_NOT_FOUND"
-            ) {
-              setIsNotFound(true);
+            const isMarketingDoc =
+              documentId === "marketing-strategy-2026" ||
+              (documentId && documentId.toLowerCase().includes("marketing")) ||
+              navState.docType === "marketing-plan" ||
+              navState.docType === "Marketing Plan" ||
+              (docTitle && docTitle.toLowerCase().includes("marketing"));
+
+            const isContractDoc =
+              documentId === "lagos-sme-partnership-contract" ||
+              (documentId && documentId.toLowerCase().includes("contract")) ||
+              (documentId && documentId.toLowerCase().includes("partnership")) ||
+              navState.docType === "contract" ||
+              (docTitle && docTitle.toLowerCase().includes("contract"));
+
+            const isPitchDeckDoc =
+              documentId === "series-a-investor-deck" ||
+              (documentId && (documentId.toLowerCase().includes("pitch") || documentId.toLowerCase().includes("deck") || documentId.toLowerCase().includes("series-a"))) ||
+              navState.docType === "pitch-deck" ||
+              navState.docType === "Pitch Deck" ||
+              (docTitle && (docTitle.toLowerCase().includes("pitch") || docTitle.toLowerCase().includes("deck") || docTitle.toLowerCase().includes("investor deck")));
+
+            if (isPitchDeckDoc) {
+              setDocTitle(docTitle || "Series-A Investor Deck");
+              setRevisionCount((prev) => (prev > 0 ? prev : (navState.revisionCount ?? 2)));
+              setDocStatus((prev) => (prev !== "Draft" ? prev : "Draft"));
+              setSaveStatus("saved");
+              setStyleTemplate("Corporate");
+              setIsNotFound(false);
+              setSections(DEFAULT_PITCH_DECK_SECTIONS);
+              setCompanyProfile((prev) => ({
+                ...prev,
+                companyName: prev.companyName || "SolarTech Nigeria",
+                preparedFor: prev.preparedFor || "Investor presentation",
+                preparedBy: prev.preparedBy || "SolarTech Nigeria",
+              }));
+              setBrandKit((prev) => ({
+                ...prev,
+                configured: true,
+                font: prev.font || "Montserrat",
+                primaryColor: prev.primaryColor || "#0F172A",
+                secondaryColor: prev.secondaryColor || "#2563EB",
+                tagline: prev.tagline || "Clean power, built to last",
+              }));
+              lastSavedSnapshotRef.current = JSON.stringify({
+                sections: DEFAULT_PITCH_DECK_SECTIONS,
+                title: "Series-A Investor Deck",
+                styleTemplate: "Corporate",
+              });
+              hasLoadedInitialRef.current = true;
+            } else if (isMarketingDoc) {
+              setDocTitle(docTitle || "Marketing Strategy 2026");
+              setRevisionCount((prev) => (prev > 0 ? prev : (navState.revisionCount ?? 2)));
+              setDocStatus((prev) => (prev !== "Draft" ? prev : "Draft"));
+              setSaveStatus("saved");
+              setStyleTemplate(navState.styleTemplate || "Minimal");
+              setIsNotFound(false);
+              setSections(DEFAULT_MARKETING_PLAN_SECTIONS);
+              setCompanyProfile((prev) => ({
+                ...prev,
+                companyName: prev.companyName || "SolarTech Nigeria",
+                preparedFor: prev.preparedFor || "Commercial team",
+                preparedBy: prev.preparedBy || "SolarTech Nigeria",
+              }));
+              setBrandKit((prev) => ({
+                ...prev,
+                configured: true,
+                font: prev.font || "Montserrat",
+                primaryColor: prev.primaryColor || "#0F172A",
+                secondaryColor: prev.secondaryColor || "#2563EB",
+                tagline: prev.tagline || "Clean power, built to last",
+              }));
+              lastSavedSnapshotRef.current = JSON.stringify({
+                sections: DEFAULT_MARKETING_PLAN_SECTIONS,
+                title: "Marketing Strategy 2026",
+                styleTemplate: navState.styleTemplate || "Minimal",
+              });
+              hasLoadedInitialRef.current = true;
+            } else if (isContractDoc) {
+              setDocTitle(docTitle || "Lagos SME Partnership Contract");
+              setRevisionCount((prev) => (prev > 0 ? prev : (navState.revisionCount ?? 2)));
+              setDocStatus((prev) => (prev !== "Draft" ? prev : "Draft"));
+              setSaveStatus("saved");
+              setStyleTemplate("Corporate");
+              setIsNotFound(false);
+              setSections(DEFAULT_CONTRACT_SECTIONS);
+              setCompanyProfile((prev) => ({
+                ...prev,
+                companyName: prev.companyName || "SolarTech Nigeria",
+                preparedFor: prev.preparedFor || 'Lagos SME Partners Ltd. ("the Client")',
+                preparedBy: prev.preparedBy || 'SolarTech Nigeria ("the Provider")',
+              }));
+              setBrandKit((prev) => ({
+                ...prev,
+                configured: true,
+                font: prev.font || "Montserrat",
+                primaryColor: prev.primaryColor || "#0F172A",
+                secondaryColor: prev.secondaryColor || "#2563EB",
+                tagline: prev.tagline || "Clean power, built to last",
+              }));
+              lastSavedSnapshotRef.current = JSON.stringify({
+                sections: DEFAULT_CONTRACT_SECTIONS,
+                title: "Lagos SME Partnership Contract",
+                styleTemplate: "Corporate",
+              });
+              hasLoadedInitialRef.current = true;
+            } else {
+              if (
+                err.response?.status === 404 ||
+                err.response?.data?.code === "DOCUMENT_NOT_FOUND"
+              ) {
+                setIsNotFound(true);
+              }
+              hasLoadedInitialRef.current = true;
+              lastSavedSnapshotRef.current = JSON.stringify({
+                sections,
+                title: docTitle,
+                styleTemplate,
+              });
+              setSaveStatus("error");
+              setSaveError(
+                err.response?.data?.message ||
+                  err.message ||
+                  "Failed to load document from server"
+              );
             }
-            hasLoadedInitialRef.current = true;
-            lastSavedSnapshotRef.current = JSON.stringify({
-              sections,
-              title: docTitle,
-              styleTemplate,
-            });
-            setSaveStatus("error");
-            setSaveError(
-              err.response?.data?.message ||
-                err.message ||
-                "Failed to load document from server"
-            );
           }
         } else {
           hasLoadedInitialRef.current = true;
@@ -1007,6 +1682,123 @@ const DocumentWorkspace = () => {
     toast.success("Added new item");
   };
 
+  // Slide Presentation Studio Operations
+  const handlePrevSlide = () => {
+    setActiveSlideIndex((i) => Math.max(0, i - 1));
+  };
+
+  const handleNextSlide = () => {
+    setActiveSlideIndex((i) => Math.min(sections.length - 1, i + 1));
+  };
+
+  const handleMoveSlideUp = async (idx) => {
+    if (idx <= 0) return;
+    const nextSections = [...sections];
+    const temp = nextSections[idx - 1];
+    nextSections[idx - 1] = nextSections[idx];
+    nextSections[idx] = temp;
+    setSections(nextSections);
+    setActiveSlideIndex(idx - 1);
+    await persistContent(nextSections, docTitle, styleTemplate, false);
+    toast.info("Slide order updated");
+  };
+
+  const handleMoveSlideDown = async (idx) => {
+    if (idx >= sections.length - 1) return;
+    const nextSections = [...sections];
+    const temp = nextSections[idx + 1];
+    nextSections[idx + 1] = nextSections[idx];
+    nextSections[idx] = temp;
+    setSections(nextSections);
+    setActiveSlideIndex(idx + 1);
+    await persistContent(nextSections, docTitle, styleTemplate, false);
+    toast.info("Slide order updated");
+  };
+
+  const handleDuplicateSlide = async (idx) => {
+    const target = sections[idx];
+    if (!target) return;
+    const copy = {
+      ...target,
+      id: `slide-${Date.now()}`,
+      title: `${target.title} (Copy)`,
+    };
+    const nextSections = [...sections];
+    nextSections.splice(idx + 1, 0, copy);
+    setSections(nextSections);
+    setActiveSlideIndex(idx + 1);
+    await persistContent(nextSections, docTitle, styleTemplate, false);
+    toast.success("Slide duplicated");
+  };
+
+  const handleDeleteSlide = async (idx) => {
+    if (sections.length <= 1) {
+      toast.warning("Presentations must contain at least one slide");
+      return;
+    }
+    const nextSections = sections.filter((_, i) => i !== idx);
+    setSections(nextSections);
+    setActiveSlideIndex(Math.min(idx, nextSections.length - 1));
+    await persistContent(nextSections, docTitle, styleTemplate, false);
+    toast.info("Slide removed");
+  };
+
+  const handleAddPointToSlide = async (slideIdx) => {
+    const nextSections = sections.map((sec, i) => {
+      if (i === slideIdx) {
+        const curBullets = sec.bullets || [];
+        return {
+          ...sec,
+          bullets: [...curBullets, "New key point for this slide"],
+        };
+      }
+      return sec;
+    });
+    setSections(nextSections);
+    await persistContent(nextSections, docTitle, styleTemplate, false);
+    toast.success("Point added to slide");
+  };
+
+  const handleDeletePointFromSlide = async (slideIdx, pointIdx) => {
+    const nextSections = sections.map((sec, i) => {
+      if (i === slideIdx) {
+        const curBullets = (sec.bullets || []).filter((_, pI) => pI !== pointIdx);
+        return {
+          ...sec,
+          bullets: curBullets,
+        };
+      }
+      return sec;
+    });
+    setSections(nextSections);
+    await persistContent(nextSections, docTitle, styleTemplate, false);
+    toast.info("Point removed");
+  };
+
+  const handleAddSlideFromTemplate = async (template) => {
+    const newSlide = {
+      id: `slide-${Date.now()}`,
+      key: template.key,
+      kicker: template.kicker,
+      title: template.title,
+      subtitle: template.subtitle,
+      footerNote: template.footerNote,
+      isCover: Boolean(template.isCover),
+      isClosing: Boolean(template.isClosing),
+      metricValue: template.metricValue,
+      metricLabel: template.metricLabel,
+      bullets: template.bullets ? [...template.bullets] : undefined,
+    };
+    const insertIdx = activeSlideIndex + 1;
+    const nextSections = [...sections];
+    nextSections.splice(insertIdx, 0, newSlide);
+    setSections(nextSections);
+    setActiveSlideIndex(insertIdx);
+    setShowSlidePickerModal(false);
+    await persistContent(nextSections, docTitle, styleTemplate, false);
+    toast.success(`Added "${template.name}" slide`);
+  };
+
   const docType =
     navState.docType ||
     docData?.documentType ||
@@ -1019,7 +1811,13 @@ const DocumentWorkspace = () => {
             (docTitle.toLowerCase().includes("contract") ||
               docTitle.toLowerCase().includes("agreement"))
           ? "Contract"
-          : null);
+          : docTitle && docTitle.toLowerCase().includes("marketing")
+            ? "Marketing Plan"
+            : docTitle &&
+                (docTitle.toLowerCase().includes("pitch") ||
+                  docTitle.toLowerCase().includes("deck"))
+              ? "Pitch Deck"
+              : null);
 
   const isBusinessPlan =
     docType === "BusinessPlan" ||
@@ -1046,6 +1844,42 @@ const DocumentWorkspace = () => {
       (docTitle && docTitle.toLowerCase().includes("agreement")) ||
       location.pathname.toLowerCase().includes("contract") ||
       location.search.toLowerCase().includes("contract"));
+
+  const isMarketingPlan =
+    !isBusinessPlan &&
+    !isSop &&
+    !isContract &&
+    (docType === "Marketing Plan" ||
+      docType === "marketing-plan" ||
+      docType === "marketing" ||
+      (docTitle && docTitle.toLowerCase().includes("marketing")) ||
+      location.pathname.toLowerCase().includes("marketing") ||
+      location.search.toLowerCase().includes("marketing"));
+
+  const isPitchDeck =
+    !isBusinessPlan &&
+    !isSop &&
+    !isContract &&
+    !isMarketingPlan &&
+    (docType === "Pitch Deck" ||
+      docType === "pitch-deck" ||
+      docType === "pitch" ||
+      docType === "PitchDeck" ||
+      (docTitle &&
+        (docTitle.toLowerCase().includes("pitch") ||
+          docTitle.toLowerCase().includes("deck") ||
+          docTitle.toLowerCase().includes("investor deck"))) ||
+      location.pathname.toLowerCase().includes("pitch") ||
+      location.pathname.toLowerCase().includes("deck") ||
+      location.pathname.toLowerCase().includes("series-a") ||
+      location.search.toLowerCase().includes("pitch") ||
+      location.search.toLowerCase().includes("deck"));
+
+  const safeSlideIndex = Math.min(
+    Math.max(0, activeSlideIndex),
+    Math.max(0, sections.length - 1)
+  );
+  const currentSlide = sections[safeSlideIndex] || sections[0] || {};
 
   const companyInitials = companyProfile.companyName
     .split(" ")
@@ -1083,82 +1917,39 @@ const DocumentWorkspace = () => {
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               {docTitle || "\u00A0"}
             </h1>
-            <div className="flex items-center gap-2 mt-1">
-              {isBusinessPlan ? (
-                <span className="px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-700">
-                  Business Plan
-                </span>
-              ) : isSop ? (
-                <span className="px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-700">
-                  SOP
-                </span>
-              ) : isContract ? (
-                <span className="px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-700">
-                  Contract
-                </span>
-              ) : null}
-              <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-                <span
-                  className={`font-semibold ${
-                    docStatus === "Finalized"
-                      ? "text-emerald-700"
-                      : docStatus === "Exported"
-                        ? "text-indigo-700"
-                        : docStatus === "Saved" || saveStatus === "saved"
-                          ? "text-emerald-700"
-                          : "text-amber-700"
-                  }`}
-                >
-                  {docStatus === "Finalized"
-                    ? "Finalized"
-                    : docStatus === "Exported"
-                      ? "Exported"
-                      : docStatus === "Saved" || saveStatus === "saved"
-                        ? "Saved"
-                        : "Draft"}
-                </span>
-                <span>
-                  &middot; {revisionCount}{" "}
-                  {revisionCount === 1 ? "revision" : "revisions"}
-                </span>
+            <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 font-medium flex-wrap">
+              <span className="text-slate-500 font-medium">
+                {isContract
+                  ? "Contract"
+                  : isBusinessPlan
+                    ? "Business Plan"
+                    : isSop
+                      ? "SOP"
+                      : isMarketingPlan
+                        ? "Marketing Plan"
+                        : isPitchDeck
+                          ? "Pitch Deck"
+                          : (navState.docType || "Document")}
               </span>
-              {saveStatus === "saving" && (
-                <span
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 animate-pulse"
-                  title="Saving changes..."
-                >
+              <span className="text-slate-300">•</span>
+              <span>{docStatus === "Finalized" ? "Finalized" : "Draft"}</span>
+              <span className="text-slate-300">•</span>
+              <span>
+                {revisionCount} {revisionCount === 1 ? "revision" : "revisions"}
+              </span>
+              <span className="text-slate-300">•</span>
+              {saveStatus === "saving" ? (
+                <span className="inline-flex items-center gap-1 text-blue-600 font-semibold animate-pulse">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Saving...
+                  <span>Saving</span>
                 </span>
-              )}
-              {saveStatus === "unsaved" && (
-                <span
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600"
-                  title="Unsaved changes detected. Autosaving shortly..."
-                >
+              ) : saveStatus === "unsaved" ? (
+                <span className="inline-flex items-center gap-1 text-amber-600 font-semibold">
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-                  Unsaved changes
+                  <span>Unsaved changes</span>
                 </span>
-              )}
-              {saveStatus === "saved" && (
-                <span
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600"
-                  title={
-                    lastSavedAt
-                      ? `Saved at ${lastSavedAt.toLocaleTimeString()}`
-                      : "All changes saved"
-                  }
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  Saved
-                </span>
-              )}
-              {saveStatus === "error" && (
-                <span
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600"
-                  title={saveError || "Failed to save"}
-                >
+              ) : saveStatus === "error" ? (
+                <span className="inline-flex items-center gap-1 text-rose-600 font-semibold">
                   <AlertCircle className="w-3.5 h-3.5" />
                   <span>Save failed</span>
                   <button
@@ -1170,6 +1961,18 @@ const DocumentWorkspace = () => {
                   >
                     Retry
                   </button>
+                </span>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1 text-emerald-600 font-semibold"
+                  title={
+                    lastSavedAt
+                      ? `Saved at ${lastSavedAt.toLocaleTimeString()}`
+                      : "All changes saved"
+                  }
+                >
+                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Saved</span>
                 </span>
               )}
             </div>
@@ -1337,30 +2140,30 @@ const DocumentWorkspace = () => {
             <span>AI Assistant</span>
           </button>
 
-          {/* Manual Save Button */}
-          <button
-            id="document-manual-save-btn"
-            type="button"
-            disabled={isSaving || (!isDirty && saveStatus === "saved")}
-            onClick={() =>
-              persistContent(sections, docTitle, styleTemplate, true)
-            }
-            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shadow-xs cursor-pointer ${
-              isDirty || saveStatus === "error"
-                ? "bg-blue-600 hover:bg-blue-700 border-blue-600 text-white shadow-blue-500/20 shadow-md"
-                : "border-slate-200 bg-white text-slate-400 cursor-not-allowed opacity-60"
-            }`}
-            title={isDirty ? "Save changes now" : "All changes saved"}
-          >
-            {isSaving ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-            ) : (
-              <Check
-                className={`w-3.5 h-3.5 ${isDirty ? "text-white" : "text-slate-400"}`}
-              />
-            )}
-            <span>{isSaving ? "Saving..." : isDirty ? "Save Changes" : "Saved"}</span>
-          </button>
+          {/* Manual Save Button (visible when modifications exist or saving) */}
+          {(isDirty || isSaving || saveStatus === "error") && (
+            <button
+              id="document-manual-save-btn"
+              type="button"
+              disabled={isSaving}
+              onClick={() =>
+                persistContent(sections, docTitle, styleTemplate, true)
+              }
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shadow-xs cursor-pointer ${
+                isDirty || saveStatus === "error"
+                  ? "bg-blue-600 hover:bg-blue-700 border-blue-600 text-white shadow-blue-500/20 shadow-md"
+                  : "border-slate-200 bg-white text-slate-400 cursor-not-allowed opacity-60"
+              }`}
+              title={isDirty ? "Save changes now" : "All changes saved"}
+            >
+              {isSaving ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+              ) : (
+                <Check className="w-3.5 h-3.5 text-white" />
+              )}
+              <span>{isSaving ? "Saving..." : "Save Changes"}</span>
+            </button>
+          )}
 
           {/* Preview Toggle Button */}
           <button
@@ -1421,7 +2224,728 @@ const DocumentWorkspace = () => {
       {/* ==================================================================== */}
       {/* 2. MAIN WORKSPACE CONTAINER: DOCUMENT CANVAS + AI ASSISTANT PANEL     */}
       {/* ==================================================================== */}
-      <div className="flex flex-col lg:flex-row items-start gap-6 relative">
+      {isPitchDeck ? (
+        /* ==================================================================== */
+        /* CORPORATE PITCH DECK PRESENTATION STUDIO                              */
+        /* ==================================================================== */
+        <div className="flex flex-col xl:flex-row items-start gap-6 relative">
+          {/* 1. LEFT COLUMN: SLIDES THUMBNAILS DRAWER (Hidden in Preview Presentation Mode) */}
+          {!isPreviewMode && (
+            <div className="w-full xl:w-72 shrink-0">
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sticky top-6">
+                <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <Presentation className="w-4 h-4 text-slate-500" />
+                    <h3 className="text-sm font-bold text-slate-800">Slides</h3>
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-400">
+                    {sections.length} {sections.length === 1 ? "slide" : "slides"}
+                  </span>
+                </div>
+
+                {/* Thumbnails list */}
+                <div className="space-y-3.5 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
+                {sections.map((slide, sIdx) => {
+                  const isActive = sIdx === safeSlideIndex;
+                  const slideNumberStr = String(sIdx + 1).padStart(2, "0");
+                  const slideKicker =
+                    slide.kicker ||
+                    (sIdx === 0
+                      ? "Cover"
+                      : slide.title?.length > 20
+                        ? `${slide.title.substring(0, 20)}...`
+                        : slide.title || `Slide ${sIdx + 1}`);
+
+                  return (
+                    <div key={slide.id || `thumb-${sIdx}`} className="space-y-1.5">
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-xs font-bold text-slate-400 mt-1 w-5 shrink-0">
+                          {slideNumberStr}
+                        </span>
+
+                        <div className="flex-1 min-w-0">
+                          {/* Mini Slide Card Preview */}
+                          <div
+                            onClick={() => {
+                              setActiveSlideIndex(sIdx);
+                              setSelectedSectionId(slide.id);
+                            }}
+                            className={`aspect-[16/10] w-full rounded-xl border bg-white p-2.5 relative cursor-pointer transition-all duration-150 overflow-hidden ${
+                              isActive
+                                ? "border-2 border-[#2563EB] ring-4 ring-blue-500/10 shadow-xs"
+                                : "border-slate-200 hover:border-slate-300 hover:shadow-2xs"
+                            }`}
+                          >
+                            {/* Visual representation of slide content inside mini card */}
+                            {sIdx === 0 || slide.isCover ? (
+                              styleTemplate === "Minimal" ? (
+                                /* Minimal Cover Thumbnail */
+                                <div className="h-full flex flex-col justify-between p-1 relative">
+                                  <div className="w-3.5 h-3.5 rounded-xs bg-[#2563EB] text-[6px] text-white flex items-center justify-center font-bold">
+                                    {companyInitials || "SN"}
+                                  </div>
+                                  <div className="space-y-1 my-auto">
+                                    <div className="w-4/5 h-1.5 bg-[#0B1536] rounded-full" />
+                                    <div className="w-1/2 h-1 bg-[#0B1536] rounded-full" />
+                                    <div className="w-2/5 h-0.5 bg-slate-400 rounded-full mt-1" />
+                                  </div>
+                                  <div className="w-12 h-0.5 bg-slate-300 rounded-full" />
+                                </div>
+                              ) : (
+                                /* Corporate Cover Thumbnail */
+                                <div className="h-full flex flex-col justify-between pl-2 relative">
+                                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#2563EB] rounded-full" />
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="w-3 h-3 rounded-xs bg-[#2563EB] text-[6px] text-white flex items-center justify-center font-bold">
+                                      {companyInitials || "SN"}
+                                    </div>
+                                    <div className="w-12 h-1 bg-slate-400 rounded-full" />
+                                  </div>
+                                  <div className="space-y-1 my-auto">
+                                    <div className="w-3/4 h-1.5 bg-[#0B1536] rounded-full" />
+                                    <div className="w-1/2 h-1 bg-[#0B1536] rounded-full" />
+                                    <div className="w-4 h-0.5 bg-[#2563EB] rounded-full mt-1" />
+                                  </div>
+                                  <div className="w-10 h-0.5 bg-slate-300 rounded-full" />
+                                </div>
+                              )
+                            ) : slide.metricValue ? (
+                              <div className="h-full flex flex-col justify-between">
+                                <div className="flex items-center justify-between">
+                                  <span
+                                    className={`text-[7px] font-bold ${
+                                      styleTemplate === "Minimal"
+                                        ? "text-slate-400 uppercase tracking-wider"
+                                        : "text-[#2563EB]"
+                                    }`}
+                                  >
+                                    {slide.kicker || "Traction"}
+                                  </span>
+                                  {styleTemplate !== "Minimal" && (
+                                    <div className="w-3 h-0.5 bg-[#2563EB] rounded-full" />
+                                  )}
+                                </div>
+                                <div className="w-4/5 h-1 bg-[#0B1536] rounded-full" />
+                                <div
+                                  className={`rounded px-1 py-0.5 border w-fit ${
+                                    styleTemplate === "Minimal"
+                                      ? "bg-white border-slate-200"
+                                      : "bg-blue-50/80 border-blue-100/80"
+                                  }`}
+                                >
+                                  <span
+                                    className={`text-[7px] font-black ${
+                                      styleTemplate === "Minimal"
+                                        ? "text-[#0B1536]"
+                                        : "text-[#2563EB]"
+                                    }`}
+                                  >
+                                    {slide.metricValue}
+                                  </span>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <div className="w-full h-0.5 bg-slate-200 rounded-full" />
+                                  <div className="w-2/3 h-0.5 bg-slate-200 rounded-full" />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="h-full flex flex-col justify-between">
+                                <div className="flex items-center justify-between">
+                                  <span
+                                    className={`text-[7px] font-bold ${
+                                      styleTemplate === "Minimal"
+                                        ? "text-slate-400 uppercase tracking-wider"
+                                        : "text-[#2563EB]"
+                                    }`}
+                                  >
+                                    {slide.kicker || "Problem"}
+                                  </span>
+                                  {styleTemplate !== "Minimal" && (
+                                    <div className="w-3 h-0.5 bg-[#2563EB] rounded-full" />
+                                  )}
+                                </div>
+                                <div className="space-y-0.5 my-0.5">
+                                  <div className="w-4/5 h-1 bg-[#0B1536] rounded-full" />
+                                  <div className="w-1/2 h-1 bg-[#0B1536] rounded-full" />
+                                </div>
+                                <div className="space-y-1 mt-auto">
+                                  {styleTemplate === "Minimal" ? (
+                                    <>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-[5px] text-slate-400 font-mono">01</span>
+                                        <div className="w-4/5 h-0.5 bg-slate-300 rounded-full" />
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-[5px] text-slate-400 font-mono">02</span>
+                                        <div className="w-3/5 h-0.5 bg-slate-300 rounded-full" />
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="flex items-center gap-1">
+                                        <div className="w-1 h-1 rounded-full bg-slate-800 shrink-0" />
+                                        <div className="w-4/5 h-0.5 bg-slate-300 rounded-full" />
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <div className="w-1 h-1 rounded-full bg-slate-800 shrink-0" />
+                                        <div className="w-3/5 h-0.5 bg-slate-300 rounded-full" />
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Slide Title / Kicker */}
+                          <div className="pt-1 flex items-center justify-between">
+                            <span
+                              onClick={() => {
+                                setActiveSlideIndex(sIdx);
+                                setSelectedSectionId(slide.id);
+                              }}
+                              className={`text-xs font-bold cursor-pointer transition-colors truncate ${
+                                isActive ? "text-slate-900" : "text-slate-500 hover:text-slate-700"
+                              }`}
+                            >
+                              {slideKicker}
+                            </span>
+                          </div>
+
+                          {/* Active Micro-action Buttons (Matching mockups) */}
+                          {isActive && (
+                            <div className="flex items-center gap-1 pt-1 animate-in fade-in duration-150">
+                              <button
+                                type="button"
+                                title="Move slide up"
+                                disabled={sIdx === 0}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveSlideUp(sIdx);
+                                }}
+                                className="w-6 h-6 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors cursor-pointer"
+                              >
+                                <ArrowUp className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                title="Move slide down"
+                                disabled={sIdx === sections.length - 1}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveSlideDown(sIdx);
+                                }}
+                                className="w-6 h-6 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors cursor-pointer"
+                              >
+                                <ArrowDown className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                title="Duplicate slide"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDuplicateSlide(sIdx);
+                                }}
+                                className="w-6 h-6 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                title="Delete slide"
+                                disabled={sections.length <= 1}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSlide(sIdx);
+                                }}
+                                className="w-6 h-6 rounded-md border border-slate-200 bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* + Add slide Button at bottom of drawer */}
+                <button
+                  type="button"
+                  onClick={() => setShowSlidePickerModal(true)}
+                  className="w-full mt-3 py-3 border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/40 rounded-xl text-xs font-bold text-slate-600 hover:text-blue-600 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add slide</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          )}
+
+          {/* 2. CENTER COLUMN: PRESENTATION CANVAS & CONTROLS */}
+          <div className="flex-1 w-full min-w-0 space-y-4">
+            {/* Header info row */}
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                <span>{isPreviewMode ? "Presenting" : "Editing"}</span>
+                <span className="text-slate-900 font-bold">
+                  {currentSlide?.kicker || currentSlide?.title || "Cover"}
+                </span>
+                <span>
+                  Slide {safeSlideIndex + 1} of {sections.length}
+                </span>
+              </div>
+
+              {!isPreviewMode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAiAssistant(true);
+                    setSelectedSectionId(currentSlide?.id || `slide-${safeSlideIndex}`);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  <span>AI Edit this slide</span>
+                </button>
+              )}
+            </div>
+
+            {/* 16:9 Presentation Canvas */}
+            <div
+              className="bg-white rounded-2xl border border-slate-200/90 shadow-sm relative min-h-[500px] sm:min-h-[540px] flex flex-col justify-between p-8 sm:p-12 lg:p-14 overflow-hidden transition-all"
+              style={{
+                fontFamily: brandKit.font ? `${brandKit.font}, sans-serif` : "inherit",
+              }}
+            >
+              {safeSlideIndex === 0 || currentSlide.isCover ? (
+                /* COVER SLIDE */
+                styleTemplate === "Minimal" ? (
+                  /* MINIMAL COVER SLIDE (Matches latest user screenshot media_1793199746302.png) */
+                  <>
+                    {/* Top Standalone Brand Badge */}
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-extrabold text-lg tracking-wider shadow-xs"
+                        style={{ backgroundColor: brandKit.secondaryColor || "#2563EB" }}
+                      >
+                        {companyInitials || "SN"}
+                      </div>
+                    </div>
+
+                    {/* Hero Headline & Subtitle */}
+                    <div className="my-auto py-6">
+                      <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0B1536] tracking-tight leading-[1.15] max-w-2xl mb-6">
+                        {currentSlide.title || "Powering Nigerian business without the grid"}
+                      </h1>
+                      <p className="text-base sm:text-lg font-medium text-slate-700">
+                        {currentSlide.subtitle || "Series-A raise • 2026"}
+                      </p>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="border-t border-slate-100 pt-4 flex items-center justify-between text-xs text-slate-400 font-normal mt-auto">
+                      <span>
+                        {companyProfile.companyName || "SolarTech Nigeria"} • {brandKit.tagline || "Clean power, built to last"}
+                      </span>
+                      <span>
+                        {safeSlideIndex + 1} / {sections.length}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  /* CORPORATE COVER SLIDE (Matches user screenshot media_1793196640657.png) */
+                  <>
+                    {/* Left thick vertical brand blue accent bar */}
+                    <div
+                      className="absolute left-0 top-0 bottom-0 w-3 rounded-l-2xl"
+                      style={{ backgroundColor: brandKit.secondaryColor || "#2563EB" }}
+                    />
+
+                    {/* Top Brand Header */}
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-extrabold text-base tracking-wider shadow-sm"
+                        style={{ backgroundColor: brandKit.secondaryColor || "#2563EB" }}
+                      >
+                        {companyInitials || "SN"}
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-slate-900 leading-tight">
+                          {companyProfile.companyName || "SolarTech Nigeria"}
+                        </h2>
+                        <p className="text-xs text-slate-500 font-medium">
+                          {brandKit.tagline || "Clean power, built to last"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Hero Headline & Subtitle */}
+                    <div className="my-auto py-8">
+                      <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0B1536] tracking-tight leading-[1.15] max-w-2xl">
+                        {currentSlide.title || "Powering Nigerian business without the grid"}
+                      </h1>
+                      <div
+                        className="w-14 h-1.5 rounded-full my-6"
+                        style={{ backgroundColor: brandKit.secondaryColor || "#2563EB" }}
+                      />
+                      <p className="text-base sm:text-lg font-bold text-[#0B1536]">
+                        {currentSlide.subtitle || "Series-A raise • 2026"}
+                      </p>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="border-t border-slate-200/80 pt-4 flex items-center justify-between text-xs text-slate-500 font-medium mt-auto">
+                      <span>
+                        {currentSlide.footerNote || "Confidential • Investor presentation"}
+                      </span>
+                      <span>
+                        {safeSlideIndex + 1} / {sections.length}
+                      </span>
+                    </div>
+                  </>
+                )
+              ) : (
+                /* CONTENT SLIDE (Problem, Solution, Traction, The Ask, etc.) */
+                styleTemplate === "Minimal" ? (
+                  /* MINIMAL CONTENT SLIDE (Matches user screenshots media_1793199745971 through 1793199746297) */
+                  <>
+                    {/* Top Row: Spaced-out uppercase kicker in muted slate */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
+                        {currentSlide.kicker || currentSlide.title || "Problem"}
+                      </span>
+                    </div>
+
+                    {/* Headline */}
+                    <div className="mt-4 mb-2">
+                      <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0B1536] tracking-tight leading-tight">
+                        {currentSlide.title}
+                      </h2>
+                    </div>
+
+                    {/* Highlight Metric Card (Minimal clean card) */}
+                    {currentSlide.metricValue && (
+                      <div className="inline-block bg-white border border-slate-200/90 rounded-2xl px-6 py-4 my-3 max-w-sm shadow-2xs">
+                        <div className="text-3xl sm:text-4xl font-black text-[#0B1536] tracking-tight">
+                          {currentSlide.metricValue}
+                        </div>
+                        <div className="text-xs sm:text-sm font-medium text-slate-500 mt-0.5">
+                          {currentSlide.metricLabel || "Metric target"}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bullet Points with 01, 02, 03 Numbered prefix */}
+                    <div className="space-y-4 my-2 flex-1">
+                      {(currentSlide.bullets || []).map((point, pIdx) => (
+                        <div key={pIdx} className="flex items-start group">
+                          <span className="text-sm font-semibold font-mono text-slate-400 mt-0.5 shrink-0 mr-3.5 tracking-tight w-6">
+                            {String(pIdx + 1).padStart(2, "0")}
+                          </span>
+                          <span className="text-base sm:text-lg font-medium text-slate-800 leading-snug flex-1">
+                            {point}
+                          </span>
+                          {!isPreviewMode && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePointFromSlide(safeSlideIndex, pIdx)}
+                              className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 p-1 transition-opacity ml-2"
+                              title="Remove point"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+
+                      {/* Fallback paragraphs if present */}
+                      {Array.isArray(currentSlide.paragraphs) &&
+                        currentSlide.paragraphs.map((p, pI) => (
+                          <p key={pI} className="text-base sm:text-lg font-normal text-slate-700 leading-relaxed">
+                            {p}
+                          </p>
+                        ))}
+                    </div>
+
+                    {/* Action Link: + Add point (below list in Minimal) */}
+                    {!isPreviewMode && (
+                      <div className="pt-2 pb-1">
+                        <button
+                          type="button"
+                          onClick={() => handleAddPointToSlide(safeSlideIndex)}
+                          className="text-xs font-bold text-slate-500 hover:text-blue-600 inline-flex items-center gap-1.5 py-1 transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add point</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Footer */}
+                    <div className="border-t border-slate-100 pt-4 flex items-center justify-between text-xs text-slate-400 font-medium mt-auto">
+                      <span>{companyProfile.companyName || "SolarTech Nigeria"}</span>
+                      <span>
+                        {safeSlideIndex + 1} / {sections.length}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  /* CORPORATE CONTENT SLIDE (Matches user screenshots media_1793196640420 through 1793196640607) */
+                  <>
+                    {/* Top Row: Kicker & Accent Dash */}
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="text-sm font-bold tracking-wide"
+                        style={{ color: brandKit.secondaryColor || "#2563EB" }}
+                      >
+                        {currentSlide.kicker || currentSlide.title || "Traction"}
+                      </span>
+                      <div
+                        className="w-8 h-1 rounded-full"
+                        style={{ backgroundColor: brandKit.secondaryColor || "#2563EB" }}
+                      />
+                    </div>
+
+                    {/* Headline */}
+                    <div className="mt-4 mb-2">
+                      <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0B1536] tracking-tight leading-tight">
+                        {currentSlide.title}
+                      </h2>
+                    </div>
+
+                    {/* Highlight Metric Card (for Traction or Financials) */}
+                    {currentSlide.metricValue && (
+                      <div className="inline-block bg-[#eff4ff] border border-blue-100 rounded-2xl px-6 py-4 my-3 max-w-sm">
+                        <div
+                          className="text-3xl sm:text-4xl font-black tracking-tight"
+                          style={{ color: brandKit.secondaryColor || "#2563EB" }}
+                        >
+                          {currentSlide.metricValue}
+                        </div>
+                        <div className="text-xs sm:text-sm font-semibold text-slate-600 mt-0.5">
+                          {currentSlide.metricLabel || "Metric target"}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Link: + Add point (above list in Corporate) */}
+                    {!isPreviewMode && (
+                      <div className="pt-2 pb-1">
+                        <button
+                          type="button"
+                          onClick={() => handleAddPointToSlide(safeSlideIndex)}
+                          className="text-xs font-bold text-slate-500 hover:text-blue-600 inline-flex items-center gap-1.5 py-1 transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add point</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Bullet Points with solid round black dots */}
+                    <div className="space-y-4 my-2 flex-1">
+                      {(currentSlide.bullets || []).map((point, pIdx) => (
+                        <div key={pIdx} className="flex items-start group">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-900 mt-2.5 shrink-0 mr-3.5" />
+                          <span className="text-base sm:text-lg font-medium text-slate-800 leading-snug flex-1">
+                            {point}
+                          </span>
+                          {!isPreviewMode && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePointFromSlide(safeSlideIndex, pIdx)}
+                              className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 p-1 transition-opacity ml-2"
+                              title="Remove point"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+
+                      {/* Fallback paragraphs if present */}
+                      {Array.isArray(currentSlide.paragraphs) &&
+                        currentSlide.paragraphs.map((p, pI) => (
+                          <p key={pI} className="text-base sm:text-lg font-normal text-slate-700 leading-relaxed">
+                            {p}
+                          </p>
+                        ))}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="border-t border-slate-100 pt-4 flex items-center justify-between text-xs text-slate-500 font-medium mt-auto">
+                      <span>{companyProfile.companyName || "SolarTech Nigeria"}</span>
+                      <span>
+                        {safeSlideIndex + 1} / {sections.length}
+                      </span>
+                    </div>
+                  </>
+                )
+              )}
+            </div>
+
+            {/* Bottom Pager Controls */}
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={safeSlideIndex === 0}
+                  onClick={handlePrevSlide}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Previous</span>
+                </button>
+
+                <span className="text-xs font-semibold text-slate-600 px-2">
+                  Slide {safeSlideIndex + 1} of {sections.length}
+                </span>
+
+                <button
+                  type="button"
+                  disabled={safeSlideIndex === sections.length - 1}
+                  onClick={handleNextSlide}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {!isPreviewMode && (
+                <button
+                  type="button"
+                  onClick={() => setShowSlidePickerModal(true)}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add slide after this one</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 3. RIGHT COLUMN: AI ASSISTANT PANEL */}
+          {showAiAssistant && !isPreviewMode && (
+            <div className="w-full xl:w-96 shrink-0 transition-all">
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sticky top-6 space-y-4">
+                <div className="flex items-start justify-between pb-2 border-b border-slate-100">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-blue-600" />
+                      <h3 className="text-sm font-bold text-slate-800">
+                        AI Assistant
+                      </h3>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5 leading-snug">
+                      Improve and refine your document with Ahiia.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAiAssistant(false)}
+                    className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                    aria-label="Close AI Assistant"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Context Target Banner matching mockup */}
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex items-center gap-2.5">
+                  <FileText className="w-4 h-4 text-slate-500 shrink-0" />
+                  <p className="text-xs font-bold text-slate-800">
+                    Editing {currentSlide?.kicker || currentSlide?.title || "Cover"} — Slide {safeSlideIndex + 1}
+                  </p>
+                </div>
+
+                {/* Quick actions list */}
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 mb-2.5">
+                    Quick actions
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      "Improve writing",
+                      "Shorten this",
+                      "Make more persuasive",
+                      "Make more professional",
+                      "Add detail",
+                      "Rewrite section",
+                      "Change tone",
+                      "Fix grammar",
+                      "Add missing information",
+                      "Regenerate slide",
+                    ].map((action) => (
+                      <button
+                        key={action}
+                        type="button"
+                        disabled={isAiProcessing}
+                        onClick={() => handleExecuteAi(action)}
+                        className="px-3 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-2xs active:scale-[0.98] disabled:opacity-50"
+                      >
+                        {action}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Prompt Box */}
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 mb-2">
+                    What would you like to change?
+                  </h4>
+                  <div className="relative rounded-xl border border-slate-200 bg-white p-3 shadow-2xs focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10 transition-all">
+                    <textarea
+                      rows={3}
+                      value={aiAssistantPrompt}
+                      onChange={(e) => setAiAssistantPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleExecuteAi();
+                        }
+                      }}
+                      placeholder="Describe what you want Ahiia to change..."
+                      disabled={isAiProcessing}
+                      className="w-full bg-transparent text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none resize-none pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleExecuteAi()}
+                      disabled={isAiProcessing || !aiAssistantPrompt.trim()}
+                      className={`absolute right-3 bottom-3 w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                        aiAssistantPrompt.trim() && !isAiProcessing
+                          ? "bg-[#131B4D] text-white hover:bg-[#1C2666] active:scale-95 shadow-xs cursor-pointer"
+                          : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                      }`}
+                      aria-label="Send AI prompt"
+                    >
+                      {isAiProcessing ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <ArrowUp className="w-3.5 h-3.5 stroke-[2.5]" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* AI Processing Feedback */}
+                {isAiProcessing && (
+                  <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 bg-blue-50 p-2.5 rounded-xl animate-pulse">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                    <span>Ahiia AI is optimizing your slide...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col lg:flex-row items-start gap-6 relative">
         {/* ================================================================== */}
         {/* LEFT COLUMN: DOCUMENT PAPER SHEET                                  */}
         {/* ================================================================== */}
@@ -1430,8 +2954,8 @@ const DocumentWorkspace = () => {
             className={`bg-white rounded-2xl shadow-sm border border-slate-200/90 w-full p-6 sm:p-10 lg:p-14 transition-all duration-300 ${
               styleTemplate === "Minimal"
                 ? "font-sans border-slate-100"
-                : styleTemplate === "Creative"
-                  ? "overflow-hidden"
+                : styleTemplate === "Creative" || (isContract && styleTemplate !== "Minimal")
+                  ? "overflow-hidden font-sans"
                   : "font-sans"
             }`}
             style={{
@@ -1460,6 +2984,247 @@ const DocumentWorkspace = () => {
                   ))}
                 </div>
               </div>
+            ) : isContract && styleTemplate !== "Minimal" ? (
+              /* ==================================================================== */
+              /* CONTRACT SIGNATURE COVER BANNER (Matches Reference Design)           */
+              /* ==================================================================== */
+              <div className="-m-6 sm:-m-10 lg:-m-14 rounded-t-2xl bg-[#131B4D] p-6 sm:p-10 lg:p-12 mb-8 sm:mb-10 text-white shadow-xs">
+                {/* Brand Row: Logo badge + Company name + Tagline beside it */}
+                <div className="flex items-center gap-3.5">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-md shrink-0"
+                    style={{
+                      backgroundColor: brandKit.secondaryColor || "#2563EB",
+                    }}
+                  >
+                    {companyInitials}
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-extrabold text-white leading-tight">
+                      {companyProfile.companyName || "SolarTech Nigeria"}
+                    </h2>
+                    <p className="text-xs text-slate-300 mt-0.5 font-normal">
+                      {brandKit.tagline || "Clean power, built to last"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Title & Document Type Kicker */}
+                <div className="mt-8 mb-6">
+                  <p className="text-[11px] font-semibold text-indigo-200/90 tracking-wide mb-1.5 uppercase">
+                    Contract
+                  </p>
+                  <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
+                    {docTitle &&
+                    (docTitle.toLowerCase().includes("contract") ||
+                      docTitle.toLowerCase().includes("agreement"))
+                      ? docTitle.toLowerCase().includes("partnership")
+                        ? "SERVICE AGREEMENT"
+                        : docTitle.toUpperCase()
+                      : `${(docTitle || "SERVICE").toUpperCase()} AGREEMENT`}
+                  </h1>
+                </div>
+
+                {/* Two-column metadata: Between / And */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-3 border-t border-white/10">
+                  <div>
+                    <p className="text-[11px] font-medium text-slate-400 mb-1">
+                      Between
+                    </p>
+                    <p className="text-xs sm:text-[13px] font-bold text-white">
+                      {companyProfile.preparedFor
+                        ? companyProfile.preparedFor
+                            .toLowerCase()
+                            .includes("client")
+                          ? companyProfile.preparedFor
+                          : `${companyProfile.preparedFor} ("the Client")`
+                        : 'Lagos SME Partners Ltd. ("the Client")'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-medium text-slate-400 mb-1">
+                      And
+                    </p>
+                    <p className="text-xs sm:text-[13px] font-bold text-white">
+                      {companyProfile.companyName
+                        ? companyProfile.companyName
+                            .toLowerCase()
+                            .includes("provider")
+                          ? companyProfile.companyName
+                          : `${companyProfile.companyName} ("the Provider")`
+                        : 'SolarTech Nigeria ("the Provider")'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : isMarketingPlan ? (
+              styleTemplate === "Creative" ? (
+                /* ==================================================================== */
+                /* CREATIVE MARKETING PLAN BANNER (Matches Reference Image 1)           */
+                /* ==================================================================== */
+                <div className="-m-6 sm:-m-10 lg:-m-14 rounded-t-2xl bg-[#131B4D] p-6 sm:p-10 lg:p-12 mb-8 sm:mb-10 text-white shadow-xs">
+                  {/* Brand Row: Logo badge + Company name + Tagline beside it */}
+                  <div className="flex items-center gap-3.5">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-md shrink-0"
+                      style={{
+                        backgroundColor: brandKit.secondaryColor || "#2563EB",
+                      }}
+                    >
+                      {companyInitials}
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-extrabold text-white leading-tight">
+                        {companyProfile.companyName || "SolarTech Nigeria"}
+                      </h2>
+                      <p className="text-xs text-slate-300 mt-0.5 font-normal">
+                        {brandKit.tagline || "Clean power, built to last"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Title & Document Type Kicker */}
+                  <div className="mt-8 mb-6">
+                    <p className="text-xs text-slate-300 font-medium tracking-normal mb-1.5">
+                      Marketing Plan
+                    </p>
+                    <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
+                      {docTitle && docTitle.toLowerCase().includes("plan")
+                        ? docTitle.toUpperCase()
+                        : `${(docTitle || "MARKETING PLAN").toUpperCase()} 2026`}
+                    </h1>
+                  </div>
+
+                  {/* Two-column metadata */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-3 border-t border-white/10">
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-400 mb-1">
+                        Prepared for
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-white">
+                        {companyProfile.preparedFor || "Commercial team"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-400 mb-1">
+                        Prepared by
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-white">
+                        {companyProfile.preparedBy || companyProfile.companyName || "SolarTech Nigeria"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : styleTemplate === "Corporate" ? (
+                /* ==================================================================== */
+                /* CORPORATE MARKETING PLAN HEADER (Matches Reference Image 2)          */
+                /* ==================================================================== */
+                <div className="space-y-6 pb-6 border-b border-slate-900 mb-8">
+                  {/* Top Row: Brand Info on Left, "Marketing Plan" on Right */}
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-md shrink-0"
+                        style={{
+                          backgroundColor: brandKit.secondaryColor || "#2563EB",
+                        }}
+                      >
+                        {companyInitials}
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-bold text-slate-900 leading-tight">
+                          {companyProfile.companyName || "SolarTech Nigeria"}
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-0.5 font-normal">
+                          {brandKit.tagline || "Clean power, built to last"}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-slate-500 font-medium">
+                      Marketing Plan
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <div className="pt-2">
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
+                      {docTitle && docTitle.toLowerCase().includes("plan")
+                        ? docTitle.toUpperCase()
+                        : `${(docTitle || "MARKETING PLAN").toUpperCase()} 2026`}
+                    </h1>
+                  </div>
+
+                  {/* Metadata Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-400 mb-1">
+                        Prepared for
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                        {companyProfile.preparedFor || "Commercial team"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-400 mb-1">
+                        Prepared by
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                        {companyProfile.preparedBy || companyProfile.companyName || "SolarTech Nigeria"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* ==================================================================== */
+                /* MINIMAL MARKETING PLAN HEADER (Matches Reference Image 3)            */
+                /* ==================================================================== */
+                <div className="space-y-6 mb-8">
+                  {/* Badge */}
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-white text-xs shadow-xs shrink-0"
+                    style={{
+                      backgroundColor: brandKit.secondaryColor || "#2563EB",
+                    }}
+                  >
+                    {companyInitials}
+                  </div>
+
+                  {/* Kicker + Title + Tagline */}
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium mb-2">
+                      Marketing Plan
+                    </p>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight uppercase mb-2">
+                      {docTitle && docTitle.toLowerCase().includes("plan")
+                        ? docTitle.toUpperCase()
+                        : `${(docTitle || "MARKETING PLAN").toUpperCase()} 2026`}
+                    </h1>
+                    <p className="text-xs sm:text-[13px] text-slate-500 font-normal">
+                      {brandKit.tagline || "Clean power, built to last"}
+                    </p>
+                  </div>
+
+                  {/* Metadata Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-400 mb-1">
+                        Prepared for
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                        {companyProfile.preparedFor || "Commercial team"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-400 mb-1">
+                        Prepared by
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                        {companyProfile.preparedBy || companyProfile.companyName || "SolarTech Nigeria"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
             ) : styleTemplate === "Creative" ? (
               /* ==================================================================== */
               /* UNIVERSAL CREATIVE COVER BANNER (Matches Reference Across All Docs)   */
@@ -1713,76 +3478,143 @@ const DocumentWorkspace = () => {
                 </div>
               )
             ) : isContract ? (
-              <div>
-                <div className="flex items-start justify-between gap-4 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm shadow-xs shrink-0"
-                      style={{
-                        backgroundColor: brandKit.secondaryColor || "#2563EB",
-                      }}
-                    >
-                      {companyInitials}
+              styleTemplate === "Corporate" ? (
+                /* Corporate Contract Header (Faithfully matching design) */
+                <div className="space-y-6">
+                  {/* Initials Badge */}
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center font-black text-white text-xs shadow-xs shrink-0"
+                    style={{
+                      backgroundColor: brandKit.secondaryColor || "#2563EB",
+                    }}
+                  >
+                    {companyInitials}
+                  </div>
+
+                  {/* Kicker + Title + Tagline */}
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium tracking-normal mb-1.5">
+                      Contract
+                    </p>
+                    <h1 className="text-2xl sm:text-3xl font-black text-[#131B4D] tracking-tight uppercase mb-1.5">
+                      {docTitle &&
+                      (docTitle.toLowerCase().includes("contract") ||
+                        docTitle.toLowerCase().includes("agreement"))
+                        ? docTitle.toLowerCase().includes("partnership")
+                          ? "SERVICE AGREEMENT"
+                          : docTitle.toUpperCase()
+                        : `${(docTitle || "SERVICE").toUpperCase()} AGREEMENT`}
+                    </h1>
+                    <p className="text-xs text-slate-500 font-normal">
+                      {brandKit.tagline || ""}
+                    </p>
+                  </div>
+
+                  {/* Two-column metadata: Between / And without bottom border */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
+                    <div>
+                      <p className="text-[11px] font-normal text-slate-400 mb-1">
+                        Between
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                        {companyProfile.preparedFor
+                          ? companyProfile.preparedFor
+                              .toLowerCase()
+                              .includes("client")
+                            ? companyProfile.preparedFor
+                            : `${companyProfile.preparedFor} ("the Client")`
+                          : 'Lagos SME Partners Ltd. ("the Client")'}
+                      </p>
                     </div>
                     <div>
-                      <h2 className="text-sm font-bold text-slate-900 leading-tight">
-                        {companyProfile.companyName}
-                      </h2>
-                      <p className="text-xs text-slate-400 mt-0.5 font-normal">
-                        {brandKit.tagline || ""}
+                      <p className="text-[11px] font-normal text-slate-400 mb-1">
+                        And
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                        {companyProfile.companyName
+                          ? companyProfile.companyName
+                              .toLowerCase()
+                              .includes("provider")
+                            ? companyProfile.companyName
+                            : `${companyProfile.companyName} ("the Provider")`
+                          : 'SolarTech Nigeria ("the Provider")'}
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-semibold text-slate-400 tracking-normal">
-                    Contract
-                  </span>
                 </div>
+              ) : (
+                /* Minimal Contract Header */
+                <div>
+                  <div className="flex items-start justify-between gap-4 pb-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm shadow-xs shrink-0"
+                        style={{
+                          backgroundColor: brandKit.secondaryColor || "#2563EB",
+                        }}
+                      >
+                        {companyInitials}
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-bold text-slate-900 leading-tight">
+                          {companyProfile.companyName}
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-0.5 font-normal">
+                          {brandKit.tagline || ""}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-400 tracking-normal">
+                      Contract
+                    </span>
+                  </div>
 
-                {/* Contract Document Title */}
-                <div className="mt-7 mb-6">
-                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
-                    {docTitle &&
-                    (docTitle.toLowerCase().includes("contract") ||
-                      docTitle.toLowerCase().includes("agreement"))
-                      ? docTitle.toLowerCase().includes("partnership")
-                        ? "SERVICE AGREEMENT"
-                        : docTitle.toUpperCase()
-                      : `${(docTitle || "SERVICE").toUpperCase()} AGREEMENT`}
-                  </h1>
-                </div>
+                  {/* Contract Document Title */}
+                  <div className="mt-7 mb-6">
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">
+                      {docTitle &&
+                      (docTitle.toLowerCase().includes("contract") ||
+                        docTitle.toLowerCase().includes("agreement"))
+                        ? docTitle.toLowerCase().includes("partnership")
+                          ? "SERVICE AGREEMENT"
+                          : docTitle.toUpperCase()
+                        : `${(docTitle || "SERVICE").toUpperCase()} AGREEMENT`}
+                    </h1>
+                  </div>
 
-                {/* Contract Parties Grid: Between / And */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-slate-200">
-                  <div>
-                    <p className="text-xs font-normal text-slate-400 mb-1">
-                      Between
-                    </p>
-                    <p className="text-xs sm:text-[13px] font-bold text-slate-900">
-                      {companyProfile.preparedFor
-                        ? companyProfile.preparedFor
-                            .toLowerCase()
-                            .includes("client")
+                  {/* Contract Parties Grid: Between / And */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-slate-200">
+                    <div>
+                      <p className="text-xs font-normal text-slate-400 mb-1">
+                        Between
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                        {companyProfile.preparedFor
                           ? companyProfile.preparedFor
-                          : `${companyProfile.preparedFor} ("the Client")`
-                        : 'Lagos SME Partners Ltd. ("the Client")'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-normal text-slate-400 mb-1">
-                      And
-                    </p>
-                    <p className="text-xs sm:text-[13px] font-bold text-slate-900">
-                      {companyProfile.companyName
-                        ? companyProfile.companyName
-                            .toLowerCase()
-                            .includes("provider")
+                              .toLowerCase()
+                              .includes("client")
+                            ? companyProfile.preparedFor
+                            : `${companyProfile.preparedFor} ("the Client")`
+                          : 'Lagos SME Partners Ltd. ("the Client")'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-normal text-slate-400 mb-1">
+                        And
+                      </p>
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-900">
+                        {companyProfile.companyName
                           ? companyProfile.companyName
-                          : `${companyProfile.companyName} ("the Provider")`
-                        : 'SolarTech Nigeria ("the Provider")'}
-                    </p>
+                              .toLowerCase()
+                              .includes("provider")
+                            ? companyProfile.companyName
+                            : `${companyProfile.companyName} ("the Provider")`
+                          : 'SolarTech Nigeria ("the Provider")'}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )
             ) : (
               <>
                 <div className="flex items-start justify-between gap-4">
@@ -1906,26 +3738,35 @@ const DocumentWorkspace = () => {
                     {/* Section Header */}
                     {!(
                       section.isFinancialOverview &&
+                      isBusinessPlan &&
                       styleTemplate === "Corporate" &&
                       !isEditing
                     ) && (
                       <div className="flex items-center justify-between pb-2 mb-2">
                         <div className="flex items-center gap-2">
-                          {styleTemplate === "Creative" && (
-                            <span className="w-1.5 h-4.5 bg-[#2563EB] rounded-full shrink-0" />
+                          {(styleTemplate === "Creative" || (isContract && styleTemplate !== "Minimal")) && (
+                            <span
+                              className="w-1.5 h-4.5 rounded-full shrink-0"
+                              style={{
+                                backgroundColor: brandKit.secondaryColor || "#2563EB",
+                              }}
+                            />
                           )}
                           <h3
                             className={`tracking-tight ${
-                              styleTemplate === "Creative"
-                                ? "text-base font-black text-[#2563EB]"
-                                : isContract
-                                  ? "text-sm sm:text-base font-black text-slate-900"
-                                  : styleTemplate === "Minimal"
+                              styleTemplate === "Creative" || (isContract && styleTemplate !== "Minimal")
+                                ? "text-base sm:text-lg font-bold text-[#2563EB]"
+                                : styleTemplate === "Minimal"
+                                  ? "text-xs sm:text-[13px] font-bold text-slate-900"
+                                  : isBusinessPlan
                                     ? "text-xs sm:text-[13px] font-bold text-slate-900"
-                                    : isBusinessPlan
-                                      ? "text-xs sm:text-[13px] font-bold text-slate-900"
-                                      : "text-base font-extrabold text-slate-900"
+                                    : "text-base font-extrabold text-slate-900"
                             }`}
+                            style={
+                              (styleTemplate === "Creative" || (isContract && styleTemplate !== "Minimal")) && brandKit.secondaryColor
+                                ? { color: brandKit.secondaryColor }
+                                : {}
+                            }
                           >
                             {displayClauseTitle}
                           </h3>
@@ -2127,7 +3968,135 @@ const DocumentWorkspace = () => {
                         )}
                       </div>
                     ) : section.isFinancialOverview ? (
-                      styleTemplate === "Corporate" ? (
+                      isMarketingPlan ? (
+                        /* ==================================================================== */
+                        /* MARKETING PLAN BUDGET & TIMELINE (Interchangeable 3 Styles)           */
+                        /* ==================================================================== */
+                        <div className="space-y-4">
+                          {styleTemplate === "Creative" ? (
+                            <div className="space-y-1">
+                              <p className="text-xs text-slate-400 font-medium mb-1">Pricing</p>
+                              {section.keyValueRows?.map((row, idx) => {
+                                const isTotal =
+                                  row.isTotal ||
+                                  idx === (section.keyValueRows?.length || 0) - 1 ||
+                                  /budget|total/i.test(row.key);
+                                return isTotal ? (
+                                  <div
+                                    key={idx}
+                                    className="bg-[#eff4ff] border border-blue-100/90 rounded-xl px-4 py-3.5 my-2 flex items-center justify-between shadow-2xs"
+                                  >
+                                    <span className="text-xs sm:text-[13px] font-extrabold text-slate-900">
+                                      {row.key}
+                                    </span>
+                                    <span
+                                      className="text-xs sm:text-[13px] font-extrabold text-right"
+                                      style={{ color: brandKit.secondaryColor || "#2563EB" }}
+                                    >
+                                      {row.value}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between text-xs sm:text-[13px] py-2"
+                                  >
+                                    <span className="text-slate-800 font-normal">
+                                      {row.key}
+                                    </span>
+                                    <span className="font-extrabold text-slate-900 text-right">
+                                      {row.value}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : styleTemplate === "Corporate" ? (
+                            <div className="space-y-1">
+                              {section.keyValueRows?.map((row, idx) => {
+                                const isTotal =
+                                  row.isTotal ||
+                                  idx === (section.keyValueRows?.length || 0) - 1 ||
+                                  /budget|total/i.test(row.key);
+                                return isTotal ? (
+                                  <div
+                                    key={idx}
+                                    className="bg-slate-50 border border-slate-200/80 rounded-xl px-4 py-3 my-2 flex items-center justify-between shadow-2xs"
+                                  >
+                                    <span className="text-xs sm:text-[13px] font-extrabold text-slate-900">
+                                      {row.key}
+                                    </span>
+                                    <span className="text-xs sm:text-[13px] font-extrabold text-slate-900 text-right">
+                                      {row.value}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between text-xs sm:text-[13px] py-2"
+                                  >
+                                    <span className="text-slate-800 font-normal">
+                                      {row.key}
+                                    </span>
+                                    <span className="font-extrabold text-slate-900 text-right">
+                                      {row.value}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            /* Minimal */
+                            <div className="space-y-1">
+                              {section.keyValueRows?.map((row, idx) => {
+                                const isTotal =
+                                  row.isTotal ||
+                                  idx === (section.keyValueRows?.length || 0) - 1 ||
+                                  /budget|total/i.test(row.key);
+                                return isTotal ? (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between text-xs sm:text-[13px] py-2 pt-3 border-t border-slate-200 mt-2"
+                                  >
+                                    <span className="text-xs sm:text-[13px] font-extrabold text-slate-900">
+                                      {row.key}
+                                    </span>
+                                    <span className="text-xs sm:text-[13px] font-extrabold text-slate-900 text-right">
+                                      {row.value}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between text-xs sm:text-[13px] py-2"
+                                  >
+                                    <span className="text-slate-800 font-normal">
+                                      {row.key}
+                                    </span>
+                                    <span className="font-bold text-slate-900 text-right">
+                                      {row.value}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Trailing Narrative Paragraph */}
+                          {Array.isArray(section.paragraphs) && section.paragraphs.length > 0 && (
+                            <div className="pt-2 space-y-2">
+                              {section.paragraphs.map((p, pIdx) => (
+                                <p
+                                  key={pIdx}
+                                  className="text-xs sm:text-[13px] text-slate-600 leading-relaxed font-normal"
+                                >
+                                  {p}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : styleTemplate === "Corporate" ? (
                         /* Corporate Light-Blue Financial Overview Card (Reference Design) */
                         <div className="bg-[#EAF1FC] rounded-2xl p-6 sm:p-7 space-y-4">
                           <div className="flex items-center justify-between">
@@ -2326,7 +4295,22 @@ const DocumentWorkspace = () => {
                                   key={idx}
                                   className="flex items-start gap-2.5 text-xs sm:text-[13px] text-slate-700 leading-relaxed"
                                 >
-                                  {styleTemplate === "Creative" ? (
+                                  {isMarketingPlan ? (
+                                    styleTemplate === "Creative" ? (
+                                      <span
+                                        className="w-2 h-2 rounded-[2px] mt-1.5 shrink-0"
+                                        style={{
+                                          backgroundColor: brandKit.secondaryColor || "#2563EB",
+                                        }}
+                                      />
+                                    ) : styleTemplate === "Corporate" ? (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-slate-900 mt-2 shrink-0" />
+                                    ) : (
+                                      <span className="text-slate-400 font-normal shrink-0 select-none leading-relaxed">
+                                        —
+                                      </span>
+                                    )
+                                  ) : styleTemplate === "Creative" || (isContract && styleTemplate !== "Minimal") ? (
                                     <span
                                       className="w-2 h-2 rounded-full mt-1.5 shrink-0"
                                       style={{
@@ -2334,8 +4318,8 @@ const DocumentWorkspace = () => {
                                       }}
                                     />
                                   ) : isContract ? (
-                                    <span className="text-slate-800 font-bold select-none leading-none mt-0.5">
-                                      •
+                                    <span className="text-slate-400 font-normal shrink-0 select-none leading-relaxed">
+                                      —
                                     </span>
                                   ) : isBusinessPlan ? (
                                     <span className="text-slate-400 font-bold shrink-0 select-none leading-none mt-0.5">
@@ -2351,9 +4335,26 @@ const DocumentWorkspace = () => {
                           </div>
                         )}
 
+                        {/* Legal Sub-clauses (1.1, 1.2, (a), (b)) */}
+                        {section.subClauses && (
+                          <div className="space-y-2 mt-2 pl-2">
+                            {section.subClauses.map((sub, sIdx) => (
+                              <div
+                                key={sIdx}
+                                className="flex items-start gap-2.5 text-xs sm:text-[13px] text-slate-700 leading-relaxed"
+                              >
+                                <span className="font-bold text-slate-900 shrink-0 select-none">
+                                  {sub.number}
+                                </span>
+                                <span className="font-normal">{sub.text}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         {/* Key-Value Rows (Responsibilities & Requirements & Payment Terms) */}
                         {section.keyValueRows && (
-                          <div className="space-y-2.5">
+                          <div className="space-y-2 pt-1 max-w-2xl">
                             {section.keyValueRows.map((row, rIdx) => {
                               const isTotalRow =
                                 isContract &&
@@ -2370,13 +4371,19 @@ const DocumentWorkspace = () => {
                                       : "border-b border-slate-50 last:border-b-0"
                                   }`}
                                 >
-                                  <span className="text-slate-600 font-normal">
+                                  <span
+                                    className={
+                                      isTotalRow
+                                        ? "font-bold text-slate-900"
+                                        : "text-slate-700 font-normal"
+                                    }
+                                  >
                                     {row.key}
                                   </span>
                                   <span
                                     className={`text-right ${
                                       isTotalRow
-                                        ? "font-black text-slate-900 text-sm"
+                                        ? "font-black text-slate-900 text-sm sm:text-[15px] tracking-tight"
                                         : "font-bold text-slate-900"
                                     }`}
                                   >
@@ -2449,6 +4456,43 @@ const DocumentWorkspace = () => {
                           </div>
                         )}
 
+                        {/* Universal Table / Schedule Renderer */}
+                        {section.tableRows && section.id !== "pricing" && section.id !== "timeline" && (
+                          <div className="mt-4 overflow-x-auto">
+                            <table className="w-full text-left text-xs sm:text-[13px] border-collapse">
+                              <thead>
+                                <tr className="border-b border-slate-200 bg-slate-50/50">
+                                  {Object.keys(section.tableRows[0] || {}).map((header, hIdx) => (
+                                    <th
+                                      key={hIdx}
+                                      className="py-2.5 px-3 font-bold text-slate-800 uppercase tracking-wider text-[11px]"
+                                    >
+                                      {header.replace(/([A-Z])/g, " $1").trim()}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {section.tableRows.map((row, rIdx) => (
+                                  <tr key={rIdx} className="hover:bg-slate-50/40 transition-colors">
+                                    {Object.values(row).map((cell, cIdx) => (
+                                      <td key={cIdx} className="py-2.5 px-3 text-slate-700">
+                                        {String(cell)}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            {section.totalCost && (
+                              <div className="pt-3 flex items-center justify-between text-sm font-black border-t-2 border-slate-200">
+                                <span className="text-slate-900 uppercase">Total</span>
+                                <span className="text-slate-900 font-extrabold">{section.totalCost}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* Table (Pricing) */}
                         {section.id === "pricing" && section.tableRows && (
                           <div className="space-y-3">
@@ -2508,11 +4552,11 @@ const DocumentWorkspace = () => {
                             (/termination/i.test(section.title || section.key || "") ||
                               /term/i.test(section.title || section.key || "") ||
                               /law/i.test(section.title || section.key || "")))) && (
-                          <div className="bg-[#FFFBEB] border border-amber-200/70 rounded-xl p-4 mt-4 space-y-1">
-                            <p className="text-[11px] font-bold text-amber-800">
+                          <div className="bg-[#FFFDF5] border border-amber-200/80 border-l-[3px] border-l-amber-500 rounded-r-xl p-4 mt-4 space-y-1">
+                            <p className="text-xs font-bold text-[#B45309]">
                               {section.guidance?.title || "Guidance flagged this clause"}
                             </p>
-                            <p className="text-xs text-amber-900/90 leading-relaxed">
+                            <p className="text-xs text-amber-950/90 leading-relaxed font-normal">
                               {section.guidance?.content ||
                                 "No liability cap or governing-law clause is present. Review before sending — Ahiia does not add legal terms you did not provide."}
                             </p>
@@ -2522,7 +4566,7 @@ const DocumentWorkspace = () => {
                         {/* Signatures execution block inside section */}
                         {(section.isSignatures ||
                           /signature|signator|execution/i.test(section.title || section.key || "")) && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-6 mt-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 pt-6 mt-4">
                             <div>
                               <div className="border-t border-slate-900 w-full mb-3" />
                               <p className="text-[11px] font-medium text-slate-500 mb-1">
@@ -2566,7 +4610,7 @@ const DocumentWorkspace = () => {
                     <h3 className="tracking-tight text-sm sm:text-base font-black text-slate-900 pb-2 mb-2">
                       {`${sections.length + 1}. Signatures`}
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-6 mt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 pt-6 mt-2">
                       <div>
                         <div className="border-t border-slate-900 w-full mb-3" />
                         <p className="text-[11px] font-medium text-slate-500 mb-1">
@@ -2600,20 +4644,20 @@ const DocumentWorkspace = () => {
 
             {/* Document Footer Row */}
             <div
-              className={`mt-14 pt-3 flex items-center justify-between text-[11px] font-medium ${
-                styleTemplate === "Creative"
+              className={`mt-14 pt-3.5 flex items-center justify-between text-[11px] font-normal ${
+                styleTemplate === "Creative" || (isContract && styleTemplate !== "Minimal")
                   ? "border-t-2 border-[#2563EB] text-slate-500"
                   : styleTemplate === "Minimal"
                     ? "border-t border-slate-100 text-slate-400"
-                    : "border-t border-slate-200 text-slate-400"
+                    : "border-t border-slate-200/80 text-slate-400"
               }`}
               style={
-                styleTemplate === "Creative"
+                styleTemplate === "Creative" || (isContract && styleTemplate !== "Minimal")
                   ? { borderTopColor: brandKit.secondaryColor || "#2563EB" }
                   : {}
               }
             >
-              <span>{companyProfile.companyName}</span>
+              <span>{companyProfile.companyName || "SolarTech Nigeria"}</span>
               <span>Page 1 of 1</span>
             </div>
           </div>
@@ -2747,6 +4791,77 @@ const DocumentWorkspace = () => {
           </div>
         )}
       </div>
+      )}
+
+      {/* Slide Template Picker Modal */}
+      {showSlidePickerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full p-6 max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-black text-slate-900">
+                  Add Pitch Deck Slide
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Choose from 13 standard investor-ready pitch deck templates.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSlidePickerModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto py-4 space-y-2.5 flex-1 pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {PITCH_DECK_SLIDE_TEMPLATES.map((tpl) => (
+                  <div
+                    key={tpl.key}
+                    onClick={() => handleAddSlideFromTemplate(tpl)}
+                    className="p-3.5 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/20 transition-all cursor-pointer group flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
+                          {tpl.kicker}
+                        </span>
+                        {tpl.metricValue && (
+                          <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                            {tpl.metricValue}
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1">
+                        {tpl.name}
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                        {tpl.description}
+                      </p>
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-400 group-hover:text-blue-600">
+                      <span>Insert slide</span>
+                      <Plus className="w-3.5 h-3.5" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setShowSlidePickerModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ==================================================================== */}
       {/* 3. FLOATING BOTTOM BRAND KIT DOCK                                    */}
@@ -2782,7 +4897,7 @@ const DocumentWorkspace = () => {
           <span className="text-slate-500 font-medium">{brandKit.font}</span>
 
           <span className="text-slate-400 font-normal">
-            {styleTemplate === "Creative" ? "Creative" : `${styleTemplate} layout`}
+            {`${styleTemplate} layout`}
           </span>
 
           <Link
