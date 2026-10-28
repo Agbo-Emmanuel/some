@@ -44,6 +44,8 @@ export const ENDPOINTS = {
   DOCUMENTS: "/api/v1/documents",
   GET_DOCUMENTS: "/api/v1/documents",
   CREATE_DOCUMENT: "/api/v1/documents",
+  DOCUMENT_GENERATIONS: "/api/v1/document-generations",
+  DOCUMENT_GENERATION_STATUS: (id) => `/api/v1/document-generations/${id}`,
   GET_ONE_DOCUMENT: (id) => `/api/v1/documents/${id}`,
   DOCUMENT_BY_ID: (id) => `/api/v1/documents/${id}`,
   DOCUMENT_STYLE: (id) => `/api/v1/documents/${id}/style`,

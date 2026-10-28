@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ChevronRight,
@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Clock,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import {
@@ -19,6 +20,8 @@ import {
   createDocument,
   createDocumentDraft,
   getDocuments,
+  startDocumentGeneration,
+  waitForDocumentGeneration,
 } from "../../services/document.service";
 import SetupFooter from "../components/document-setup/SetupFooter";
 import OptionalInformation from "../components/document-setup/OptionalInformation";
@@ -49,10 +52,206 @@ const DocumentSetup = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
 
+  // Async polling queue state
+  const [isPolling, setIsPolling] = useState(false);
+  const [pollingStatus, setPollingStatus] = useState("Queued");
+  const abortControllerRef = useRef(null);
+  const isMountedRef = useRef(true);
+
   // Referenced documents state
   const [availableDocs, setAvailableDocs] = useState([]);
   const [selectedDocIds, setSelectedDocIds] = useState([]);
   const [showRefDocs, setShowRefDocs] = useState(false);
+
+  // Cleanup AbortController on unmount to prevent memory leaks and state updates
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Resume on Refresh (Idempotency): Check sessionStorage for pending background generation
+  useEffect(() => {
+    const rawPending = sessionStorage.getItem("ahiia_pending_generation");
+    if (!rawPending) return;
+
+    let pending;
+    try {
+      pending = JSON.parse(rawPending);
+    } catch (e) {
+      console.warn("Invalid ahiia_pending_generation in sessionStorage:", e);
+      sessionStorage.removeItem("ahiia_pending_generation");
+      return;
+    }
+
+    // Only resume if it belongs to this template (or no template specified)
+    if (pending.templateId && templateId && pending.templateId !== templateId) {
+      return;
+    }
+
+    // Restore and preserve user inputs in case of error or cancellation
+    if (pending.payload) {
+      if (pending.payload.title) {
+        setTitle(pending.payload.title);
+        setIsTitleManual(true);
+      }
+      if (pending.payload.structuredInputs) {
+        const { optionalInformation, ...rest } = pending.payload.structuredInputs;
+        setFormData(rest);
+        if (optionalInformation) {
+          setOptionalValues(optionalInformation);
+        }
+      }
+      if (pending.payload.writingStyle) {
+        const styleKey = Object.entries({
+          professional: "Professional",
+          "clear-simple": "Clear & Simple",
+          persuasive: "Persuasive",
+        }).find(([, v]) => v.toLowerCase() === pending.payload.writingStyle.toLowerCase())?.[0];
+        if (styleKey) setWritingStyle(styleKey);
+      }
+      if (pending.payload.styleTemplate) {
+        setStyleTemplate(pending.payload.styleTemplate);
+      }
+      if (pending.payload.referencedDocumentIds) {
+        setSelectedDocIds(pending.payload.referencedDocumentIds);
+      }
+    }
+
+    // Skip the setup form and immediately transition to the Polling UI
+    setIsPolling(true);
+    setIsGenerating(true);
+    setPollingStatus(pending.job?.status || "Queued");
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const resumePollingJob = async () => {
+      try {
+        let job = pending.job;
+        if (!job) {
+          try {
+            job = await startDocumentGeneration(
+              pending.payload,
+              pending.requestKey,
+              controller.signal
+            );
+            pending.job = job;
+            sessionStorage.setItem("ahiia_pending_generation", JSON.stringify(pending));
+          } catch (startErr) {
+            if (startErr.response?.status === 404) {
+              console.warn(
+                "Async endpoint returned 404 on resume. Falling back to synchronous creation."
+              );
+              sessionStorage.removeItem("ahiia_pending_generation");
+              const syncResult = await createDocument(pending.payload);
+              const createdId =
+                syncResult?.id ||
+                syncResult?.data?.id ||
+                syncResult?.document?.id ||
+                syncResult?.documentId;
+
+              if (!createdId) {
+                throw new Error("Document created, but no valid document ID was returned by the server.");
+              }
+
+              if (isMountedRef.current) {
+                setIsPolling(false);
+                setIsGenerating(false);
+              }
+              toast.success(`"${pending.payload?.title || "Document"}" created successfully!`);
+              navigate(`/dashboard/documents/${createdId}`, {
+                state: {
+                  document: syncResult,
+                  newlyCreated: true,
+                  newlyCreatedId: createdId,
+                  docTitle: pending.payload?.title,
+                  docType: pending.payload?.documentType,
+                  styleTemplate: pending.payload?.styleTemplate,
+                  structuredInputs: pending.payload?.structuredInputs,
+                },
+              });
+              return;
+            }
+            throw startErr;
+          }
+        }
+
+        if (isMountedRef.current && job?.status) {
+          setPollingStatus(job.status);
+        }
+
+        const document = await waitForDocumentGeneration(job, {
+          signal: controller.signal,
+          onStatus: (statusObj) => {
+            if (isMountedRef.current) {
+              setPollingStatus(statusObj.status || "Generating");
+            }
+          },
+        });
+
+        // Extract document.id (NEVER the job's id)
+        const docId = document?.id || document?.documentId || document?.data?.id;
+        if (!docId) {
+          throw new Error("Generation completed, but returned document is missing a valid ID.");
+        }
+
+        sessionStorage.removeItem("ahiia_pending_generation");
+        if (isMountedRef.current) {
+          setIsPolling(false);
+          setIsGenerating(false);
+        }
+        toast.success(`"${pending.payload?.title || "Document"}" generated successfully!`);
+
+        navigate(`/dashboard/documents/${docId}`, {
+          state: {
+            document,
+            newlyCreated: true,
+            newlyCreatedId: docId,
+            docTitle: pending.payload?.title,
+            docType: pending.payload?.documentType,
+            styleTemplate: pending.payload?.styleTemplate,
+            structuredInputs: pending.payload?.structuredInputs,
+          },
+        });
+      } catch (err) {
+        if (
+          err.name === "AbortError" ||
+          controller.signal.aborted ||
+          err.message?.includes("Polling stopped")
+        ) {
+          console.log("Resume polling stopped via user abort or unmount.");
+          if (isMountedRef.current) {
+            setIsPolling(false);
+            setIsGenerating(false);
+          }
+          return;
+        }
+
+        console.error("Resume polling failed:", err);
+        sessionStorage.removeItem("ahiia_pending_generation");
+        if (isMountedRef.current) {
+          setIsPolling(false);
+          setIsGenerating(false);
+          const errMsg = extractApiErrorMessage(
+            err,
+            "Failed to complete document generation."
+          );
+          toast.error(errMsg);
+        }
+      }
+    };
+
+    resumePollingJob();
+
+    return () => {
+      controller.abort();
+    };
+  }, [templateId, navigate]);
 
   // Auto-generate title suggestion based on input if user hasn't explicitly edited title
   useEffect(() => {
@@ -228,36 +427,135 @@ const DocumentSetup = () => {
     };
   };
 
+  const handleCancelAndRunInBackground = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setIsPolling(false);
+    setIsGenerating(false);
+    setShowModal(false);
+    toast.info(
+      "Generation continues in the background. Check your documents shortly."
+    );
+    // Do NOT clear sessionStorage on abort
+  };
+
   const handleGenerate = async () => {
-    setIsGenerating(true);
     const payload = buildPayload();
+    const requestKey =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+    // Save requestKey, payload, and templateId to sessionStorage BEFORE the first POST
+    const pendingState = {
+      requestKey,
+      payload,
+      templateId,
+    };
+    sessionStorage.setItem(
+      "ahiia_pending_generation",
+      JSON.stringify(pendingState)
+    );
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setShowModal(false);
+    setIsGenerating(true);
+    setIsPolling(true);
+    setPollingStatus("Queued");
 
     try {
-      const result = await createDocument(payload);
+      let job;
+      try {
+        job = await startDocumentGeneration(
+          payload,
+          requestKey,
+          controller.signal
+        );
+      } catch (startErr) {
+        // Fallback to synchronous POST /api/v1/documents if endpoint returns 404
+        if (startErr.response?.status === 404) {
+          console.warn(
+            "/api/v1/document-generations returned 404. Falling back to synchronous creation."
+          );
+          sessionStorage.removeItem("ahiia_pending_generation");
+          setIsPolling(false);
 
-      const createdId =
-        result?.id ||
-        result?.data?.id ||
-        result?.document?.id ||
-        result?.documentId;
+          const result = await createDocument(payload);
+          const createdId =
+            result?.id ||
+            result?.data?.id ||
+            result?.document?.id ||
+            result?.documentId;
 
-      if (!createdId) {
+          if (!createdId) {
+            throw new Error(
+              "Document created, but no valid document ID was returned by the server."
+            );
+          }
+
+          toast.success(
+            `"${payload.title}" created successfully! Generating document...`
+          );
+
+          navigate(`/dashboard/documents/${createdId}`, {
+            state: {
+              document: result,
+              newlyCreated: true,
+              newlyCreatedId: createdId,
+              docTitle: payload.title,
+              docType: payload.documentType,
+              styleTemplate: payload.styleTemplate,
+              structuredInputs: payload.structuredInputs,
+            },
+          });
+          return;
+        }
+        throw startErr;
+      }
+
+      // Initial POST succeeded! Store job so refresh can resume polling.
+      pendingState.job = job;
+      sessionStorage.setItem(
+        "ahiia_pending_generation",
+        JSON.stringify(pendingState)
+      );
+
+      setPollingStatus(job.status || "Queued");
+
+      // Wait for async document generation to complete
+      const document = await waitForDocumentGeneration(job, {
+        signal: controller.signal,
+        onStatus: (statusObj) => {
+          if (isMountedRef.current) {
+            setPollingStatus(statusObj.status || "Generating");
+          }
+        },
+      });
+
+      // Extract document.id (NEVER the job's id)
+      const docId =
+        document?.id || document?.documentId || document?.data?.id;
+      if (!docId) {
         throw new Error(
-          "Document created, but no valid document ID was returned by the server."
+          "Generation completed, but returned document is missing a valid ID."
         );
       }
 
-      toast.success(
-        `"${payload.title}" created successfully! Generating document...`,
-      );
-      setShowModal(false);
+      sessionStorage.removeItem("ahiia_pending_generation");
+      if (isMountedRef.current) {
+        setIsPolling(false);
+        setIsGenerating(false);
+      }
+      toast.success(`"${payload.title}" generated successfully!`);
 
-      // Smoothly transition immediately to the dedicated document review & edit workspace
-      navigate(`/dashboard/documents/${createdId}`, {
+      navigate(`/dashboard/documents/${docId}`, {
         state: {
-          document: result,
+          document,
           newlyCreated: true,
-          newlyCreatedId: createdId,
+          newlyCreatedId: docId,
           docTitle: payload.title,
           docType: payload.documentType,
           styleTemplate: payload.styleTemplate,
@@ -265,14 +563,35 @@ const DocumentSetup = () => {
         },
       });
     } catch (err) {
+      // If aborted by user ("Cancel & Run in Background"), do NOT clear sessionStorage or show error toast
+      if (
+        err.name === "AbortError" ||
+        controller.signal.aborted ||
+        err.message?.includes("Polling stopped")
+      ) {
+        console.log("Polling stopped by user; server generation continues.");
+        if (isMountedRef.current) {
+          setIsPolling(false);
+          setIsGenerating(false);
+        }
+        return;
+      }
+
       console.error("Failed to generate document:", err);
-      const errMsg = extractApiErrorMessage(
-        err,
-        "Failed to generate document. Please check your inputs and try again.",
-      );
-      toast.error(errMsg);
+      sessionStorage.removeItem("ahiia_pending_generation");
+      if (isMountedRef.current) {
+        setIsPolling(false);
+        setIsGenerating(false);
+        const errMsg = extractApiErrorMessage(
+          err,
+          "Failed to generate document. Please check your inputs and try again."
+        );
+        toast.error(errMsg);
+      }
     } finally {
-      setIsGenerating(false);
+      if (isMountedRef.current) {
+        setIsGenerating(false);
+      }
     }
   };
 
@@ -300,6 +619,84 @@ const DocumentSetup = () => {
       setIsSavingDraft(false);
     }
   };
+
+  // Polling Queue UI: Replaces the setup form during background polling
+  if (isPolling) {
+    return (
+      <div className="max-w-4xl mx-auto py-8 sm:py-12 px-4 animate-in fade-in duration-300">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium mb-6">
+          <Link
+            to="/dashboard/create-document"
+            className="hover:text-slate-600 transition-colors"
+          >
+            Create Document
+          </Link>
+          <ChevronRight className="w-3 h-3" />
+          <span>{template.title}</span>
+          <ChevronRight className="w-3 h-3" />
+          <span className="text-slate-700 font-bold">Generating</span>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-8 sm:p-12 text-center max-w-2xl mx-auto">
+          {/* Animated Generation Icon Badge */}
+          <div className="relative w-16 h-16 rounded-2xl bg-[#131B4D] text-white flex items-center justify-center mx-auto mb-6 shadow-md shadow-[#131B4D]/15">
+            <Sparkles className="w-8 h-8 text-blue-300 animate-pulse" />
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center shadow-xs">
+              <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+            </div>
+          </div>
+
+          {/* Status Badge - exact string from backend */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/70 mb-4 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+            <span className="text-xs font-bold text-blue-700 tracking-wide uppercase">
+              {pollingStatus || "Queued"}
+            </span>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-2">
+            Generating {title ? `"${title}"` : template.title}
+          </h2>
+          <p className="text-sm text-slate-500 max-w-md mx-auto mb-8 leading-relaxed">
+            Ahiia is applying your company profile, brand styling, and structuring a comprehensive first draft.
+          </p>
+
+          {/* Indeterminate loader bar (No invented percentage) */}
+          <div className="w-full max-w-md mx-auto mb-8">
+            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden relative shadow-inner">
+              <div className="h-full bg-gradient-to-r from-blue-600 to-[#131B4D] rounded-full w-2/5 animate-indeterminate" />
+            </div>
+            <div className="flex justify-between items-center text-[11px] text-slate-400 mt-2.5 px-1 font-medium">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                Live Status: <strong className="text-slate-700">{pollingStatus || "Queued"}</strong>
+              </span>
+              <span className="flex items-center gap-1 text-slate-400">
+                <Clock className="w-3 h-3 text-slate-400" /> Auto-polling
+              </span>
+            </div>
+          </div>
+
+          {/* Cancel & Run in Background action */}
+          <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={handleCancelAndRunInBackground}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
+            >
+              <Clock className="w-4 h-4 text-slate-500" />
+              <span>Cancel &amp; Run in Background</span>
+            </button>
+          </div>
+
+          <p className="text-[11px] text-slate-400 mt-4 leading-normal">
+            You can safely leave this tab or cancel polling. Server generation continues uninterrupted and your completed document will appear in your Documents workspace.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto pb-12">
