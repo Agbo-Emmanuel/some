@@ -2278,7 +2278,20 @@ const DocumentWorkspace = () => {
                           >
                             {/* Visual representation of slide content inside mini card */}
                             {sIdx === 0 || slide.isCover ? (
-                              styleTemplate === "Minimal" ? (
+                              styleTemplate === "Creative" ? (
+                                /* Creative Cover Thumbnail (Dark navy with bottom blue stripe) */
+                                <div className="h-full flex flex-col justify-between p-1.5 bg-[#10183F] rounded-lg relative overflow-hidden">
+                                  <div className="w-3.5 h-3.5 rounded-xs bg-[#2563EB] text-[6px] text-white flex items-center justify-center font-bold">
+                                    {companyInitials || "SN"}
+                                  </div>
+                                  <div className="space-y-1 my-auto">
+                                    <div className="w-4/5 h-1.5 bg-white rounded-full" />
+                                    <div className="w-1/2 h-1 bg-white/70 rounded-full" />
+                                    <div className="w-2/5 h-0.5 bg-blue-300 rounded-full mt-1" />
+                                  </div>
+                                  <div className="w-full h-1 bg-[#2563EB] rounded-full mt-auto" />
+                                </div>
+                              ) : styleTemplate === "Minimal" ? (
                                 /* Minimal Cover Thumbnail */
                                 <div className="h-full flex flex-col justify-between p-1 relative">
                                   <div className="w-3.5 h-3.5 rounded-xs bg-[#2563EB] text-[6px] text-white flex items-center justify-center font-bold">
@@ -2310,90 +2323,147 @@ const DocumentWorkspace = () => {
                                 </div>
                               )
                             ) : slide.metricValue ? (
-                              <div className="h-full flex flex-col justify-between">
-                                <div className="flex items-center justify-between">
-                                  <span
-                                    className={`text-[7px] font-bold ${
-                                      styleTemplate === "Minimal"
-                                        ? "text-slate-400 uppercase tracking-wider"
-                                        : "text-[#2563EB]"
-                                    }`}
-                                  >
-                                    {slide.kicker || "Traction"}
-                                  </span>
-                                  {styleTemplate !== "Minimal" && (
-                                    <div className="w-3 h-0.5 bg-[#2563EB] rounded-full" />
-                                  )}
+                              styleTemplate === "Creative" ? (
+                                /* Creative Content with Metric (Navy top banner, solid blue metric pill) */
+                                <div className="h-full flex flex-col justify-between bg-white rounded-lg overflow-hidden">
+                                  <div className="bg-[#10183F] p-1 flex items-center justify-between">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[6px] font-bold text-blue-400">
+                                        {slide.kicker || "Traction"}
+                                      </span>
+                                      <span className="text-[7px] font-black text-[#263366]">
+                                        {String(sIdx + 1).padStart(2, "0")}
+                                      </span>
+                                    </div>
+                                    <div className="w-1/2 h-1 bg-white rounded-full" />
+                                  </div>
+                                  <div className="p-1 flex-1 flex flex-col justify-between">
+                                    <div className="space-y-0.5">
+                                      <div className="flex items-center gap-1">
+                                        <div className="w-1 h-1 rounded-full bg-[#2563EB] shrink-0" />
+                                        <div className="w-4/5 h-0.5 bg-slate-300 rounded-full" />
+                                      </div>
+                                    </div>
+                                    <div className="bg-[#2563EB] rounded px-1 py-0.5 w-fit">
+                                      <span className="text-[6px] font-black text-white">
+                                        {slide.metricValue}
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="w-4/5 h-1 bg-[#0B1536] rounded-full" />
-                                <div
-                                  className={`rounded px-1 py-0.5 border w-fit ${
-                                    styleTemplate === "Minimal"
-                                      ? "bg-white border-slate-200"
-                                      : "bg-blue-50/80 border-blue-100/80"
-                                  }`}
-                                >
-                                  <span
-                                    className={`text-[7px] font-black ${
-                                      styleTemplate === "Minimal"
-                                        ? "text-[#0B1536]"
-                                        : "text-[#2563EB]"
-                                    }`}
-                                  >
-                                    {slide.metricValue}
-                                  </span>
-                                </div>
-                                <div className="space-y-0.5">
-                                  <div className="w-full h-0.5 bg-slate-200 rounded-full" />
-                                  <div className="w-2/3 h-0.5 bg-slate-200 rounded-full" />
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="h-full flex flex-col justify-between">
-                                <div className="flex items-center justify-between">
-                                  <span
-                                    className={`text-[7px] font-bold ${
-                                      styleTemplate === "Minimal"
-                                        ? "text-slate-400 uppercase tracking-wider"
-                                        : "text-[#2563EB]"
-                                    }`}
-                                  >
-                                    {slide.kicker || "Problem"}
-                                  </span>
-                                  {styleTemplate !== "Minimal" && (
-                                    <div className="w-3 h-0.5 bg-[#2563EB] rounded-full" />
-                                  )}
-                                </div>
-                                <div className="space-y-0.5 my-0.5">
+                              ) : (
+                                <div className="h-full flex flex-col justify-between">
+                                  <div className="flex items-center justify-between">
+                                    <span
+                                      className={`text-[7px] font-bold ${
+                                        styleTemplate === "Minimal"
+                                          ? "text-slate-400 uppercase tracking-wider"
+                                          : "text-[#2563EB]"
+                                      }`}
+                                    >
+                                      {slide.kicker || "Traction"}
+                                    </span>
+                                    {styleTemplate !== "Minimal" && (
+                                      <div className="w-3 h-0.5 bg-[#2563EB] rounded-full" />
+                                    )}
+                                  </div>
                                   <div className="w-4/5 h-1 bg-[#0B1536] rounded-full" />
-                                  <div className="w-1/2 h-1 bg-[#0B1536] rounded-full" />
+                                  <div
+                                    className={`rounded px-1 py-0.5 border w-fit ${
+                                      styleTemplate === "Minimal"
+                                        ? "bg-white border-slate-200"
+                                        : "bg-blue-50/80 border-blue-100/80"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`text-[7px] font-black ${
+                                        styleTemplate === "Minimal"
+                                          ? "text-[#0B1536]"
+                                          : "text-[#2563EB]"
+                                      }`}
+                                    >
+                                      {slide.metricValue}
+                                    </span>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <div className="w-full h-0.5 bg-slate-200 rounded-full" />
+                                    <div className="w-2/3 h-0.5 bg-slate-200 rounded-full" />
+                                  </div>
                                 </div>
-                                <div className="space-y-1 mt-auto">
-                                  {styleTemplate === "Minimal" ? (
-                                    <>
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-[5px] text-slate-400 font-mono">01</span>
-                                        <div className="w-4/5 h-0.5 bg-slate-300 rounded-full" />
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-[5px] text-slate-400 font-mono">02</span>
-                                        <div className="w-3/5 h-0.5 bg-slate-300 rounded-full" />
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div className="flex items-center gap-1">
-                                        <div className="w-1 h-1 rounded-full bg-slate-800 shrink-0" />
-                                        <div className="w-4/5 h-0.5 bg-slate-300 rounded-full" />
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <div className="w-1 h-1 rounded-full bg-slate-800 shrink-0" />
-                                        <div className="w-3/5 h-0.5 bg-slate-300 rounded-full" />
-                                      </div>
-                                    </>
-                                  )}
+                              )
+                            ) : (
+                              styleTemplate === "Creative" ? (
+                                /* Creative Content Thumbnail (Navy top banner, lower white with blue dots) */
+                                <div className="h-full flex flex-col justify-between bg-white rounded-lg overflow-hidden">
+                                  <div className="bg-[#10183F] p-1 flex items-center justify-between">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[6px] font-bold text-blue-400">
+                                        {slide.kicker || "Problem"}
+                                      </span>
+                                      <span className="text-[7px] font-black text-[#263366]">
+                                        {String(sIdx + 1).padStart(2, "0")}
+                                      </span>
+                                    </div>
+                                    <div className="w-1/2 h-1 bg-white rounded-full" />
+                                  </div>
+                                  <div className="p-1 space-y-1 mt-auto">
+                                    <div className="flex items-center gap-1">
+                                      <div className="w-1 h-1 rounded-full bg-[#2563EB] shrink-0" />
+                                      <div className="w-4/5 h-0.5 bg-slate-300 rounded-full" />
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <div className="w-1 h-1 rounded-full bg-[#2563EB] shrink-0" />
+                                      <div className="w-3/5 h-0.5 bg-slate-300 rounded-full" />
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
+                              ) : (
+                                <div className="h-full flex flex-col justify-between">
+                                  <div className="flex items-center justify-between">
+                                    <span
+                                      className={`text-[7px] font-bold ${
+                                        styleTemplate === "Minimal"
+                                          ? "text-slate-400 uppercase tracking-wider"
+                                          : "text-[#2563EB]"
+                                      }`}
+                                    >
+                                      {slide.kicker || "Problem"}
+                                    </span>
+                                    {styleTemplate !== "Minimal" && (
+                                      <div className="w-3 h-0.5 bg-[#2563EB] rounded-full" />
+                                    )}
+                                  </div>
+                                  <div className="space-y-0.5 my-0.5">
+                                    <div className="w-4/5 h-1 bg-[#0B1536] rounded-full" />
+                                    <div className="w-1/2 h-1 bg-[#0B1536] rounded-full" />
+                                  </div>
+                                  <div className="space-y-1 mt-auto">
+                                    {styleTemplate === "Minimal" ? (
+                                      <>
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-[5px] text-slate-400 font-mono">01</span>
+                                          <div className="w-4/5 h-0.5 bg-slate-300 rounded-full" />
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-[5px] text-slate-400 font-mono">02</span>
+                                          <div className="w-3/5 h-0.5 bg-slate-300 rounded-full" />
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div className="flex items-center gap-1">
+                                          <div className="w-1 h-1 rounded-full bg-slate-800 shrink-0" />
+                                          <div className="w-4/5 h-0.5 bg-slate-300 rounded-full" />
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <div className="w-1 h-1 rounded-full bg-slate-800 shrink-0" />
+                                          <div className="w-3/5 h-0.5 bg-slate-300 rounded-full" />
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              )
                             )}
                           </div>
 
@@ -2515,15 +2585,64 @@ const DocumentWorkspace = () => {
 
             {/* 16:9 Presentation Canvas */}
             <div
-              className="bg-white rounded-2xl border border-slate-200/90 shadow-sm relative min-h-[500px] sm:min-h-[540px] flex flex-col justify-between p-8 sm:p-12 lg:p-14 overflow-hidden transition-all"
+              className={`rounded-2xl border border-slate-200/90 shadow-sm relative min-h-[500px] sm:min-h-[540px] flex flex-col justify-between overflow-hidden transition-all ${
+                styleTemplate === "Creative"
+                  ? safeSlideIndex === 0 || currentSlide.isCover
+                    ? "bg-[#10183F] p-8 sm:p-12 lg:p-14 text-white"
+                    : "bg-white p-0"
+                  : "bg-white p-8 sm:p-12 lg:p-14"
+              }`}
               style={{
                 fontFamily: brandKit.font ? `${brandKit.font}, sans-serif` : "inherit",
               }}
             >
               {safeSlideIndex === 0 || currentSlide.isCover ? (
                 /* COVER SLIDE */
-                styleTemplate === "Minimal" ? (
-                  /* MINIMAL COVER SLIDE (Matches latest user screenshot media_1793199746302.png) */
+                styleTemplate === "Creative" ? (
+                  /* CREATIVE COVER SLIDE (Matches Creative visual identity) */
+                  <>
+                    {/* Top Brand Header */}
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-extrabold text-base tracking-wider bg-[#2563EB] shadow-sm"
+                      >
+                        {companyInitials || "SN"}
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-white leading-tight">
+                          {companyProfile.companyName || "SolarTech Nigeria"}
+                        </h2>
+                        <p className="text-xs text-blue-200/80 font-medium">
+                          {brandKit.tagline || "Clean power, built to last"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Hero Headline & Subtitle */}
+                    <div className="my-auto py-8">
+                      <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-[1.15] max-w-2xl">
+                        {currentSlide.title || "Powering Nigerian business without the grid"}
+                      </h1>
+                      <p className="text-base sm:text-lg font-bold text-blue-300 mt-6">
+                        {currentSlide.subtitle || "Series-A raise • 2026"}
+                      </p>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="border-t border-blue-900/60 pt-4 flex items-center justify-between text-xs text-blue-200/70 font-medium mt-auto">
+                      <span>
+                        {currentSlide.footerNote || "Confidential • Investor presentation"}
+                      </span>
+                      <span>
+                        {safeSlideIndex + 1} / {sections.length}
+                      </span>
+                    </div>
+
+                    {/* Bottom bright blue accent bar */}
+                    <div className="absolute left-0 right-0 bottom-0 h-2 bg-[#2563EB]" />
+                  </>
+                ) : styleTemplate === "Minimal" ? (
+                  /* MINIMAL COVER SLIDE (Matches user screenshot media_1793199746302.png) */
                   <>
                     {/* Top Standalone Brand Badge */}
                     <div className="flex items-center gap-3.5">
@@ -2609,7 +2728,92 @@ const DocumentWorkspace = () => {
                 )
               ) : (
                 /* CONTENT SLIDE (Problem, Solution, Traction, The Ask, etc.) */
-                styleTemplate === "Minimal" ? (
+                styleTemplate === "Creative" ? (
+                  /* CREATIVE CONTENT SLIDE (Matches screenshots 1 through 5) */
+                  <>
+                    {/* Top full-width Dark Navy Banner */}
+                    <div className="bg-[#10183F] p-6 sm:p-8 lg:p-10 text-white flex items-center gap-6 sm:gap-10 shrink-0">
+                      <div className="shrink-0 flex flex-col items-start min-w-[70px] sm:min-w-[90px]">
+                        <span className="text-xs sm:text-sm font-bold text-blue-400 mb-0.5">
+                          {currentSlide.kicker || currentSlide.title || "Problem"}
+                        </span>
+                        <span className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#263366] tracking-tight leading-none">
+                          {String(safeSlideIndex + 1).padStart(2, "0")}
+                        </span>
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white leading-tight flex-1">
+                        {currentSlide.title}
+                      </h2>
+                    </div>
+
+                    {/* Lower White Body */}
+                    <div className="p-6 sm:p-8 lg:p-10 flex-1 flex flex-col justify-between bg-white">
+                      {/* Bullet Points with Vibrant Blue Dots */}
+                      <div className="space-y-4 my-2 flex-1">
+                        {(currentSlide.bullets || []).map((point, pIdx) => (
+                          <div key={pIdx} className="flex items-start group">
+                            <span className="w-2 h-2 rounded-full bg-[#2563EB] mt-2.5 shrink-0 mr-4" />
+                            <span className="text-base sm:text-lg font-bold text-slate-900 leading-snug flex-1">
+                              {point}
+                            </span>
+                            {!isPreviewMode && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePointFromSlide(safeSlideIndex, pIdx)}
+                                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 p-1 transition-opacity ml-2"
+                                title="Remove point"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+
+                        {/* Fallback paragraphs if present */}
+                        {Array.isArray(currentSlide.paragraphs) &&
+                          currentSlide.paragraphs.map((p, pI) => (
+                            <p key={pI} className="text-base sm:text-lg font-normal text-slate-700 leading-relaxed">
+                              {p}
+                            </p>
+                          ))}
+                      </div>
+
+                      {/* Highlight Metric Card if present (Solid Vibrant Blue Card matching screenshot 2) */}
+                      {currentSlide.metricValue && (
+                        <div className="bg-[#2563EB] rounded-2xl px-8 py-5 text-white max-w-lg shadow-sm mb-4">
+                          <div className="text-3xl sm:text-4xl font-black text-white">
+                            {currentSlide.metricValue}
+                          </div>
+                          <div className="text-xs sm:text-sm font-medium text-blue-100 mt-1">
+                            {currentSlide.metricLabel || "Metric target"}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Link: + Add point */}
+                      {!isPreviewMode && (
+                        <div className="pt-2 pb-1">
+                          <button
+                            type="button"
+                            onClick={() => handleAddPointToSlide(safeSlideIndex)}
+                            className="text-xs font-bold text-slate-500 hover:text-blue-600 inline-flex items-center gap-1.5 py-1 transition-colors cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add point</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Footer */}
+                      <div className="pt-4 flex items-center justify-between text-xs text-slate-500 font-medium mt-auto">
+                        <span>{companyProfile.companyName || "SolarTech Nigeria"}</span>
+                        <span>
+                          {safeSlideIndex + 1} / {sections.length}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : styleTemplate === "Minimal" ? (
                   /* MINIMAL CONTENT SLIDE (Matches user screenshots media_1793199745971 through 1793199746297) */
                   <>
                     {/* Top Row: Spaced-out uppercase kicker in muted slate */}
